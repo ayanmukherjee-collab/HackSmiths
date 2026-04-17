@@ -7,20 +7,7 @@ interface DocumentCenterProps {
     onUpload: () => void;
 }
 
-const historicalFiles = [
-    { id: 1, name: 'Q4_Profit_Loss_Statement_2023.pdf', size: '2.4 MB', date: 'Jan 14, 2024', status: 'parsed' },
-    { id: 2, name: 'GSTR-3B_December_23.pdf', size: '1.1 MB', date: 'Jan 05, 2024', status: 'parsed' },
-    { id: 3, name: 'Vendor_Invoices_Q4_Batch.pdf', size: '8.4 MB', date: 'Jan 02, 2024', status: 'failed' },
-    { id: 4, name: 'Payroll_Ledger_Dec23.pdf', size: '0.8 MB', date: 'Dec 28, 2023', status: 'parsed' },
-    { id: 5, name: 'Tax_Audit_Report_FY23.pdf', size: '14.2 MB', date: 'Nov 15, 2023', status: 'parsed' },
-    { id: 6, name: 'Q3_Profit_Loss_Statement_2023.pdf', size: '2.1 MB', date: 'Oct 12, 2023', status: 'parsed' },
-    { id: 7, name: 'GSTR-3B_November_23.pdf', size: '1.0 MB', date: 'Nov 04, 2023', status: 'parsed' },
-    { id: 8, name: 'Contract_Agreements_Corp.pdf', size: '12.4 MB', date: 'Oct 28, 2023', status: 'parsed' },
-    { id: 9, name: 'Expense_Reimbursements_Oct23.pdf', size: '3.3 MB', date: 'Oct 25, 2023', status: 'processing' },
-    { id: 10, name: 'GSTR-3B_October_23.pdf', size: '1.1 MB', date: 'Oct 05, 2023', status: 'parsed' },
-    { id: 11, name: 'Payroll_Ledger_Nov23.pdf', size: '0.8 MB', date: 'Nov 28, 2023', status: 'parsed' },
-    { id: 12, name: 'Q2_Profit_Loss_Statement_2023.pdf', size: '2.2 MB', date: 'Jul 14, 2023', status: 'parsed' },
-];
+const historicalFiles: { id: number; name: string; size: string; date: string; status: string }[] = [];
 
 export const DocumentCenter: React.FC<DocumentCenterProps> = ({ onUpload }) => {
     return (
@@ -78,7 +65,19 @@ export const DocumentCenter: React.FC<DocumentCenterProps> = ({ onUpload }) => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {historicalFiles.map((file) => (
+                                {historicalFiles.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={5} className="py-16 text-center">
+                                            <div className="flex flex-col items-center gap-3">
+                                                <div className="w-14 h-14 bg-zinc-100 rounded-2xl flex items-center justify-center text-zinc-400">
+                                                    <FileText size={24} />
+                                                </div>
+                                                <p className="text-sm font-bold text-zinc-400">No documents uploaded yet</p>
+                                                <p className="text-xs font-semibold text-zinc-300">Upload a PDF to start your financial analysis</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ) : historicalFiles.map((file) => (
                                     <tr key={file.id} className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50 transition-colors group">
                                         <td className="py-4 px-6 lg:px-8">
                                             <div className="flex items-center gap-4">

@@ -10,33 +10,33 @@ import {
 import { Settings, ChevronDown } from 'lucide-react';
 
 const data2023 = [
-    { month: 'Jan', margin: 10.2 },
-    { month: 'Feb', margin: 11.0 },
-    { month: 'Mar', margin: 10.8 },
-    { month: 'Apr', margin: 12.1 },
-    { month: 'May', margin: 11.5 },
-    { month: 'Jun', margin: 13.0 },
-    { month: 'Jul', margin: 13.4 },
-    { month: 'Aug', margin: 14.1 },
-    { month: 'Sep', margin: 13.9 },
-    { month: 'Oct', margin: 15.2 },
-    { month: 'Nov', margin: 15.8 },
-    { month: 'Dec', margin: 16.0 },
+    { month: 'Jan', margin: 0 },
+    { month: 'Feb', margin: 0 },
+    { month: 'Mar', margin: 0 },
+    { month: 'Apr', margin: 0 },
+    { month: 'May', margin: 0 },
+    { month: 'Jun', margin: 0 },
+    { month: 'Jul', margin: 0 },
+    { month: 'Aug', margin: 0 },
+    { month: 'Sep', margin: 0 },
+    { month: 'Oct', margin: 0 },
+    { month: 'Nov', margin: 0 },
+    { month: 'Dec', margin: 0 },
 ];
 
 const data2024 = [
-    { month: 'Jan', margin: 16.5 },
-    { month: 'Feb', margin: 17.0 },
-    { month: 'Mar', margin: 16.8 },
-    { month: 'Apr', margin: 17.2 },
-    { month: 'May', margin: 17.8 },
-    { month: 'Jun', margin: 18.0 },
-    { month: 'Jul', margin: 17.9 },
-    { month: 'Aug', margin: 18.2 },
-    { month: 'Sep', margin: 18.5 },
-    { month: 'Oct', margin: 18.3 },
-    { month: 'Nov', margin: 18.4 },
-    { month: 'Dec', margin: 18.9 }, // Dec projection
+    { month: 'Jan', margin: 0 },
+    { month: 'Feb', margin: 0 },
+    { month: 'Mar', margin: 0 },
+    { month: 'Apr', margin: 0 },
+    { month: 'May', margin: 0 },
+    { month: 'Jun', margin: 0 },
+    { month: 'Jul', margin: 0 },
+    { month: 'Aug', margin: 0 },
+    { month: 'Sep', margin: 0 },
+    { month: 'Oct', margin: 0 },
+    { month: 'Nov', margin: 0 },
+    { month: 'Dec', margin: 0 }, // Dec projection
 ];
 
 export const MarginChart: React.FC = () => {

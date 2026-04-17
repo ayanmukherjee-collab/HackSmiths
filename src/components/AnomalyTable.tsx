@@ -10,11 +10,7 @@ interface Anomaly {
 }
 
 export const AnomalyTable: React.FC = () => {
-    const anomalies: Anomaly[] = [
-        { id: 'TRX-9942', date: 'Nov 14', description: 'Uncategorized massive SaaS outflow', amount: '₹1,240,000', severity: 'HIGH' },
-        { id: 'TRX-8201', date: 'Oct 30', description: 'Mismatch in GST vs Invoice total', amount: '₹45,200', severity: 'MEDIUM' },
-        { id: 'TRX-7762', date: 'Oct 12', description: 'Duplicate recurring payment', amount: '₹12,499', severity: 'LOW' },
-    ];
+    const anomalies: Anomaly[] = [];
 
     return (
         <div className="bg-white rounded-[40px] p-6 lg:p-8 shadow-sm border border-zinc-200/60 w-full col-span-1 lg:col-span-3">

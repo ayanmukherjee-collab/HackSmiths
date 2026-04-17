@@ -3,22 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { BarChart, Bar, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { FileText, X, Sparkles } from 'lucide-react';
 
-const cashflowData = [
-    { name: 'Q1', inflow: 140, outflow: 80 },
-    { name: 'Q2', inflow: 200, outflow: 150 },
-    { name: 'Q3', inflow: 280, outflow: 190 },
-    { name: 'Q4', inflow: 340, outflow: 210 },
-];
+const cashflowData: { name: string; inflow: number; outflow: number }[] = [];
 
-const projectionData = [
-    { month: 'Jan', actual: 400, projection: 400 },
-    { month: 'Feb', actual: 450, projection: 440 },
-    { month: 'Mar', actual: 480, projection: 490 },
-    { month: 'Apr', actual: 520, projection: 510 },
-    { month: 'May', actual: 580, projection: 560 },
-    { month: 'Jun', actual: null, projection: 620 },
-    { month: 'Jul', actual: null, projection: 670 },
-];
+const projectionData: { month: string; actual: number | null; projection: number }[] = [];
 
 export const Analytics: React.FC = () => {
     const [isGenerating, setIsGenerating] = useState(false);
@@ -94,9 +81,9 @@ export const Analytics: React.FC = () => {
                         <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center mb-6">
                             <FileText size={18} className="text-zinc-300" />
                         </div>
-                        <h3 className="text-2xl font-bold tracking-tight mb-4 leading-tight">Your EBITDA is outperforming industry standards by 14%.</h3>
+                        <h3 className="text-2xl font-bold tracking-tight mb-4 leading-tight">Upload a document to generate AI insights.</h3>
                         <p className="text-sm text-zinc-400 font-medium leading-relaxed">
-                            Despite the Q3 expense surges, your operational efficiency remained intact. We highly suggest re-investing the surplus into the upcoming marketing cycle rather than banking it, as the projection indicates a seasonal dip.
+                            Your executive summary will appear here once financial data has been processed and analyzed by the AI engine.
                         </p>
                     </div>
 

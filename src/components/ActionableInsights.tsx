@@ -14,20 +14,7 @@ interface ActionableInsightsProps {
 }
 
 export const ActionableInsights: React.FC<ActionableInsightsProps> = ({ onNavigateToAnalytics }) => {
-    const insights: Insight[] = [
-        {
-            type: 'CRITICAL',
-            title: 'Expense-to-Revenue Spike',
-            description: 'Your expense ratio surged to 78% in Q4 (up 17%). This sharp increase is dragging down your liquidity score.',
-            action: 'Run Cost Audit',
-        },
-        {
-            type: 'TIP',
-            title: 'ITC Utilization Pattern',
-            description: 'Your Input Tax Credit usage is unusually high (92%). Monitor closely to avoid working capital traps.',
-            action: 'View Analysis',
-        }
-    ];
+    const insights: Insight[] = [];
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 col-span-1 lg:col-span-2 gap-4 lg:gap-6 mt-4 lg:mt-0">

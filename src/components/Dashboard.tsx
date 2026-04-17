@@ -47,7 +47,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUpload, onNavigateToAnal
 
                 {/* Row 1: Top Metrics */}
                 <div className="col-span-1 lg:col-span-2 xl:col-span-1 flex">
-                    <ScoreCard score={72} />
+                    <ScoreCard score={0} />
                 </div>
 
                 <div className="col-span-1 lg:col-span-2 xl:col-span-2 flex">

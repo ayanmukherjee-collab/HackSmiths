@@ -41,12 +41,12 @@ export const ScoreCard: React.FC<ScoreCardProps> = ({ score }) => {
             <div className="flex items-end justify-between w-full z-10">
                 <div>
                     <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-1">Status</p>
-                    <p className="text-[14px] font-bold text-zinc-900">Top 10% Bracket</p>
+                    <p className="text-[14px] font-bold text-zinc-400">No data yet</p>
                 </div>
                 <div className="flex flex-col items-end gap-1 px-4 py-2 bg-zinc-50 border border-zinc-100 rounded-2xl shadow-sm">
                     <div className="flex items-center gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                        <span className="text-[11px] font-black tracking-widest text-emerald-800 uppercase">Strong</span>
+                        <span className="text-[11px] font-black tracking-widest text-zinc-400 uppercase">Awaiting</span>
                     </div>
                 </div>
             </div>

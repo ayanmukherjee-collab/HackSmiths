@@ -2,11 +2,11 @@ import React from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 const data = [
-    { name: 'Payroll', value: 45 },
-    { name: 'Marketing', value: 25 },
-    { name: 'Software/SaaS', value: 15 },
-    { name: 'Rent & Utilities', value: 10 },
-    { name: 'Other', value: 5 },
+    { name: 'Payroll', value: 0 },
+    { name: 'Marketing', value: 0 },
+    { name: 'Software/SaaS', value: 0 },
+    { name: 'Rent & Utilities', value: 0 },
+    { name: 'Other', value: 0 },
 ];
 
 const COLORS = ['#18181b', '#3f3f46', '#71717a', '#a1a1aa', '#e4e4e7'];
@@ -24,7 +24,7 @@ export const ExpenseBreakdown: React.FC = () => {
 
             <div className="flex-1 w-full flex items-center justify-center relative min-h-[160px]">
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <span className="text-xl font-black text-zinc-900 tracking-tight">₹42.5M</span>
+                    <span className="text-xl font-black text-zinc-900 tracking-tight">₹0</span>
                 </div>
                 <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
