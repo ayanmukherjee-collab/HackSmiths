@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinSight Backend Testing Suite</title>
+    <style>
+        body { font-family: 'Inter', sans-serif; display: flex; flex-direction: column; align-items: center; min-height: 100vh; background-color: #121212; color: #e2e8f0; margin: 0; padding: 40px 20px; box-sizing: border-box; gap: 20px; }
+        button { padding: 10px 20px; font-size: 14px; font-weight: 600; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; transition: all 0.3s ease; display: inline-flex; justify-content: center; align-items: center; }
+        button:hover { background-color: #0056b3; transform: translateY(-1px); }
+        button:disabled { background-color: #3d3d3d; cursor: not-allowed; color: #a0a0a0; transform: none; }
+        .container { display: flex; flex-direction: column; gap: 15px; background: #1e1e1e; padding: 25px; border-radius: 8px; width: 100%; max-width: 700px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border: 1px solid #2d2d2d; }
+        .result { margin-top: 10px; padding: 15px; border-radius: 5px; background-color: #000000; min-height: 50px; white-space: pre-wrap; font-family: monospace; font-size: 13px; word-wrap: break-word; max-height: 250px; overflow-y: auto; border: 1px solid #333; }
+        input[type="file"] { margin-bottom: 5px; font-size: 14px; background: #2b2b2b; padding: 10px; border-radius: 5px; width: 100%; box-sizing: border-box; }
+        h1 { margin-bottom: 5px; color: #ffffff; text-align: center; }
+        h3 { margin: 0 0 10px 0; color: #f8fafc; font-size: 18px; display: flex; align-items: center; gap: 10px; }
+        .hidden { display: none !important; }
+        .text-error { color: #f87171 !important; border-color: rgba(248, 113, 113, 0.3); }
+        
+        .header-panel { display: flex; justify-content: space-between; align-items: center; width: 100%; max-width: 700px; background: #1e1e1e; padding: 15px 25px; border-radius: 8px; box-sizing: border-box; border: 1px solid #2d2d2d; }
+        .status-dot { width: 12px; height: 12px; border-radius: 50%; background-color: #fca5a5; display: inline-block; box-shadow: 0 0 8px #fca5a5; }
+        .status-dot.online { background-color: #4ade80; box-shadow: 0 0 8px #4ade80; }
+        
+        /* Master Panel */
+        .master-panel { border: 2px solid #0ea5e9; background: linear-gradient(145deg, #1e1e1e, #1a232c); }
+        .master-panel summary { padding: 12px; background: #0f172a; margin-bottom: 5px; border-radius: 5px; cursor: pointer; color: #cbd5e1; font-weight: 500; font-size: 14px; border: 1px solid #334155; }
+        .master-panel summary:hover { background: #1e293b; }
+        .master-panel details > div { margin-bottom: 15px; }
+
+    </style>
+</head>
+<body>
+    <div style="text-align: center; margin-bottom: 10px;">
+        <h1>FinSight API Testing Suite</h1>
+        <p style="color: #94a3b8; font-size: 14px;">End-to-End Pipeline Evaluation Platform</p>
+    </div>
+
+    <!-- Status & Demo Panel -->
+    <div class="header-panel">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <div id="statusDot" class="status-dot"></div>
+            <span id="statusText" style="font-weight: 600; font-size: 14px;">Connecting to Server...</span>
+        </div>
+        <button id="runDemoBtn" style="background-color: #8b5cf6;">Load Demo Sandbox Data</button>
+    </div>
+
+    <!-- 10. Master One-Click Pipeline -->
+    <div class="container master-panel">
+        <h3 style="color: #38bdf8;">⚡ Full Analysis Pipeline (Master EndPoint)</h3>
+        <p style="font-size: 13px; margin: 0 0 15px 0; color: #94a3b8;">Run all OCR, parsing, and predictive AI modules simultaneously. Recommended for Production workflows.</p>
+        <input type="file" id="fullPdfInput" accept="application/pdf">
+        <button id="fullAnalyzeBtn" style="background-color: #0ea5e9; margin-top: 10px;">Execute Full Pipeline</button>
+        <div id="fullAnalyzeResult" class="hidden" style="margin-top: 20px;"></div>
+    </div>
+
+    <div style="width: 100%; max-width: 700px; display: flex; align-items: center; margin: 10px 0;">
+        <div style="flex: 1; height: 1px; background: #333;"></div>
+        <div style="padding: 0 15px; color: #666; font-size: 12px; font-weight: bold; text-transform: uppercase;">Or Run Development Steps</div>
+        <div style="flex: 1; height: 1px; background: #333;"></div>
+    </div>
+
+    <!-- 1. Health -->
+    <div class="container">
+        <h3>1. Server Health</h3>
+        <button id="healthBtn" style="background: #475569;">Ping Server</button>
+        <div id="healthResult" class="result">Result will appear here...</div>
+    </div>
+
+    <!-- 2. Upload -->
+    <div class="container">
+        <h3>2. Safe PDF Upload</h3>
+        <input type="file" id="pdfInput" accept="application/pdf">
+        <button id="uploadBtn">Upload File securely</button>
+        <div id="uploadResult" class="result">Upload result will appear here...</div>
+    </div>
+
+    <script>
+        let currentFileId = null;
+
+        // Auto-ping logic
+        async function checkServerStatus() {
+            try {
+                const res = await fetch('http://localhost:5000/api/health');
+                const dot = document.getElementById('statusDot');
+                const text = document.getElementById('statusText');
+                if (res.ok) {
+                    dot.classList.add('online');
+                    text.textContent = 'Server Online';
+                    text.style.color = '#4ade80';
+                } else {
+                    throw new Error('500');
+                }
+            } catch (e) {
+                const dot = document.getElementById('statusDot');
+                const text = document.getElementById('statusText');
+                dot.classList.remove('online');
+                text.textContent = 'Server Offline';
+                text.style.color = '#fca5a5';
+            }
+        }
+        checkServerStatus();
+
+        // RUN DEMO
+        document.getElementById('runDemoBtn').addEventListener('click', async () => {
+            const resultDiv = document.getElementById('fullAnalyzeResult');
+            resultDiv.classList.remove('hidden');
+            resultDiv.innerHTML = '<p style="color: #facc15;">Loading Sandbox Environment...</p>';
+            try {
+                const response = await fetch('http://localhost:5000/api/demo');
+                const resData = await response.json();
+                renderMasterOutput(resData, resultDiv, true);
+            } catch (e) {
+                resultDiv.innerHTML = `<div class="result text-error">Demo Error: ${e.message}</div>`;
+            }
+        });
+
+        // FULL PIPELINE
+        document.getElementById('fullAnalyzeBtn').addEventListener('click', async () => {
+            const resultDiv = document.getElementById('fullAnalyzeResult');
+            const file = document.getElementById('fullPdfInput').files[0];
+            if (!file) return resultDiv.classList.remove('hidden'), resultDiv.innerHTML = '<div class="result text-error">Please select a PDF file first.</div>';
+
+            resultDiv.classList.remove('hidden');
+            resultDiv.innerHTML = '<p style="color: #38bdf8; font-family: monospace;">[WAIT] Uploading and executing 10-step AI pipeline... (Expected: 15-30s)</p>';
+            
+            const formData = new FormData();
+            formData.append('pdfFile', file);
+
+            try {
+                const response = await fetch('http://localhost:5000/api/analyze', { method: 'POST', body: formData });
+                const resData = await response.json();
+                if (response.ok) renderMasterOutput(resData, resultDiv);
+                else resultDiv.innerHTML = `<div class="result text-error">Execution Error: ${resData.message}</div>`;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="result text-error">Network Timeout: ${error.message}</div>`;
+            }
+        });
+
+        function renderMasterOutput(resData, targetDiv, isDemo = false) {
+            let html = `<div style="background: rgba(14, 165, 233, 0.1); border: 1px solid #0ea5e9; padding: 15px; margin-bottom: 20px; border-radius: 5px;">
+                <h4 style="margin:0 0 10px 0; color: #e0f2fe;">${isDemo ? '🟢 Demo Payload Generated' : '🟢 Pipeline Executed'}</h4>
+                <div style="font-family: monospace; font-size: 13px; color: #bae6fd;">Time: ${resData.processingTime}</div>
+                <div style="font-family: monospace; font-size: 13px; color: #bae6fd;">ID: <span style="color:#fff;">${resData.fileId}</span></div>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 5px;">
+                <details>
+                    <summary>1. OCR Text Extractor Node</summary>
+                    <pre class="result" style="color:#9ca3af;">${resData.extractedText}</pre>
+                </details>
+                <details>
+                    <summary>2. JSON Parsed Trees</summary>
+                    <pre class="result" style="color:#fcd34d;">${JSON.stringify(resData.parsedData, null, 2)}</pre>
+                </details>
+                <details open>
+                    <summary>3. Core Financial Logic Arrays</summary>
+                    <pre class="result" style="color:#86efac;">${JSON.stringify(resData.financials, null, 2)}</pre>
+                </details>
+                <details open>
+                    <summary>4. AI Diagnosis (Score & Risks)</summary>
+                    <div style="display:flex; gap:10px;">
+                        <pre class="result" style="flex:1; color:#93c5fd;">${JSON.stringify(resData.healthScore, null, 2)}</pre>
+                        <pre class="result" style="flex:1; color:#fda4af;">${JSON.stringify(resData.risks, null, 2)}</pre>
+                    </div>
+                </details>
+                <details open>
+                    <summary>5. React Graph Integrations & AI Predictions</summary>
+                    <pre class="result" style="color:#c4b5fd;">Chart Points:<br>${JSON.stringify(resData.graphData.monthlyProfitLoss, null, 2)}<br><br>Forecast:<br>${JSON.stringify(resData.predictions, null, 2)}</pre>
+                </details>
+            </div>`;
+            targetDiv.innerHTML = html;
+        }
+
+        // STEP 1 AND 2 FOR BACKWARD COMPATIBILITY
+        document.getElementById('healthBtn').addEventListener('click', async () => {
+            const res = document.getElementById('healthResult'); res.textContent = 'Loading...';
+            try {
+                const response = await fetch('http://localhost:5000/api/health');
+                res.textContent = JSON.stringify(await response.json(), null, 2);
+                res.style.color = '#4ade80';
+            } catch (e) { res.textContent = `Error: ${e.message}`; res.className = 'result text-error'; }
+        });
+
+        document.getElementById('uploadBtn').addEventListener('click', async () => {
+             const res = document.getElementById('uploadResult');
+             const file = document.getElementById('pdfInput').files[0];
+             if (!file) return res.textContent = 'Select file...';
+             res.textContent = 'Uploading...';
+             const formData = new FormData(); formData.append('pdfFile', file);
+             try {
+                 const response = await fetch('http://localhost:5000/api/upload', { method: 'POST', body: formData });
+                 const data = await response.json();
+                 if(response.ok) { res.textContent = JSON.stringify(data, null, 2); res.style.color = '#4ade80'; }
+                 else { res.textContent = `Error: ${data.message}`; res.className = 'result text-error'; }
+             } catch(e) { res.textContent = `Error: ${e.message}`; res.className = 'result text-error'; }
+        });
+    </script>
+</body>
+</html>

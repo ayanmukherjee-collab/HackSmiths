@@ -1,0 +1,679 @@
+================================================================================
+                    FINSIGHT — BACKEND PROJECT PLAN
+               Financial Analysis Tool for SMEs (Backend)
+================================================================================
+
+────────────────────────────────────────────────────────────────────────────────
+ 1. PROJECT OVERVIEW
+────────────────────────────────────────────────────────────────────────────────
+
+FinSight is a financial analysis tool designed for Small and Medium Enterprises
+(SMEs). The frontend is already built using React + Vite. This document covers
+the BACKEND system only, which handles:
+
+  • PDF upload and storage
+  • Data extraction using OCR (Tesseract.js)
+  • Parsing extracted text into structured JSON
+  • Financial calculations (revenue, cost, profit, margin)
+  • Financial health score generation (0–100)
+  • Risk detection and flagging
+  • Actionable suggestion generation
+  • Graph/chart data output (for frontend consumption)
+  • Future financial score prediction
+
+────────────────────────────────────────────────────────────────────────────────
+ 2. PROBLEM STATEMENT
+────────────────────────────────────────────────────────────────────────────────
+
+Many SMEs do not clearly understand their financial health. Important issues
+like increasing expenses, decreasing profits, and shrinking margins often go
+unnoticed until it's too late. Financial problems are detected reactively,
+leading to poor decision-making and avoidable losses.
+
+There is no simple, accessible tool that takes raw GST-like financial
+documents and automatically generates a health score, risk alerts, and
+actionable suggestions for SME owners.
+
+────────────────────────────────────────────────────────────────────────────────
+ 3. PROPOSED SOLUTION / IDEA
+────────────────────────────────────────────────────────────────────────────────
+
+Build a backend system that:
+
+  1. Accepts a GST-style PDF upload
+  2. Extracts text data using OCR (Tesseract.js)
+  3. Parses extracted data into structured JSON
+  4. Calculates key financial metrics:
+       - Total Revenue
+       - Total Cost / Expenses
+       - Net Profit
+       - Profit Margin (%)
+  5. Generates a Financial Health Score (0–100) based on metrics
+  6. Detects financial risks:
+       - Declining revenue trend
+       - Rising expense ratio
+       - Thin or negative profit margins
+       - Over-reliance on a single revenue stream
+  7. Provides actionable suggestions based on detected risks
+  8. Produces structured graph data (JSON) for the React frontend
+  9. Predicts future financial score using trend-based analysis
+
+────────────────────────────────────────────────────────────────────────────────
+ 4. TECH STACK
+────────────────────────────────────────────────────────────────────────────────
+
+  Backend:
+    - Node.js + Express.js (REST API server)
+    - Tesseract.js (OCR — client-side PDF text extraction)
+    - Multer (file upload handling)
+    - pdf-parse or pdf-poppler (PDF to image/text conversion)
+    - CORS (cross-origin support for React frontend)
+
+  Testing Frontend:
+    - Plain HTML + CSS + JavaScript (NOT the main frontend)
+    - Used ONLY to test API endpoints during development
+    - The actual production frontend is React + Vite (already built)
+
+  Data Format:
+    - JSON (input/output for all API responses)
+
+────────────────────────────────────────────────────────────────────────────────
+ 5. FEATURE BREAKDOWN
+────────────────────────────────────────────────────────────────────────────────
+
+  F1 — PDF Upload Endpoint
+       POST /api/upload
+       Accepts a GST PDF file, stores it temporarily, returns file ID.
+
+  F2 — OCR Text Extraction
+       Takes uploaded PDF, runs Tesseract.js OCR, returns raw text.
+
+  F3 — Data Parsing (Text → JSON)
+       Parses raw OCR text into structured JSON:
+       {
+         "invoices": [
+           {
+             "date": "...",
+             "description": "...",
+             "amount": ...,
+             "type": "revenue" | "expense",
+             "taxAmount": ...
+           }
+         ]
+       }
+
+  F4 — Financial Calculations
+       From parsed data, calculate:
+       - totalRevenue
+       - totalExpenses
+       - netProfit
+       - profitMargin (%)
+       - expenseRatio (%)
+       - monthlyBreakdown (for graph data)
+
+  F5 — Health Score Generation (0–100)
+       Weighted scoring based on:
+       - Profit margin (40%)
+       - Revenue growth trend (25%)
+       - Expense control (20%)
+       - Consistency / stability (15%)
+
+  F6 — Risk Detection
+       Flag risks such as:
+       - Profit margin < 10%
+       - Expense ratio > 70%
+       - Revenue declining for 2+ consecutive periods
+       - Net loss detected
+       - High tax liability relative to revenue
+
+  F7 — Suggestion Engine
+       Based on detected risks, generate suggestions:
+       - "Your expenses are growing faster than revenue. Review cost centers."
+       - "Profit margin is thin. Consider raising prices or reducing overhead."
+       - "Revenue is declining. Diversify income sources."
+
+  F8 — Graph Data Output
+       Return structured JSON for frontend charts:
+       - Monthly revenue vs expenses (bar chart)
+       - Profit margin trend (line chart)
+       - Health score over time (gauge / line)
+
+  F9 — Future Prediction
+       Simple trend-based prediction:
+       - Linear regression on monthly profit data
+       - Predict next 3–6 months score
+       - Flag if predicted score drops below threshold
+
+────────────────────────────────────────────────────────────────────────────────
+ 6. API ENDPOINTS (PLANNED)
+────────────────────────────────────────────────────────────────────────────────
+
+  POST   /api/upload            — Upload GST PDF
+  GET    /api/extract/:id       — Extract text from uploaded PDF
+  GET    /api/parse/:id         — Parse extracted text into JSON
+  GET    /api/calculate/:id     — Calculate financial metrics
+  GET    /api/score/:id         — Get financial health score
+  GET    /api/risks/:id         — Get detected risks
+  GET    /api/suggestions/:id   — Get suggestions
+  GET    /api/graph-data/:id    — Get chart/graph data
+  GET    /api/predict/:id       — Get future prediction
+  POST   /api/analyze           — Full pipeline (upload → everything)
+
+────────────────────────────────────────────────────────────────────────────────
+ 7. FOLDER STRUCTURE (PLANNED)
+────────────────────────────────────────────────────────────────────────────────
+
+  FinSight/
+  ├── server.js                  # Express server entry point
+  ├── package.json               # Dependencies
+  ├── .env                       # Environment variables
+  ├── uploads/                   # Temporary PDF storage
+  ├── routes/
+  │   ├── upload.js              # Upload route
+  │   └── analyze.js             # Analysis routes
+  ├── controllers/
+  │   ├── uploadController.js    # Handle file upload
+  │   ├── extractController.js   # OCR extraction
+  │   ├── parseController.js     # Text → JSON parsing
+  │   ├── calculateController.js # Financial calculations
+  │   ├── scoreController.js     # Health score
+  │   ├── riskController.js      # Risk detection
+  │   ├── suggestController.js   # Suggestion engine
+  │   ├── graphController.js     # Graph data
+  │   └── predictController.js   # Future prediction
+  ├── utils/
+  │   ├── ocrHelper.js           # Tesseract.js wrapper
+  │   ├── parser.js              # Text parsing logic
+  │   ├── calculator.js          # Math/finance helpers
+  │   └── predictor.js           # Prediction logic
+  ├── test/
+  │   └── index.html             # HTML test page for API testing
+  └── README.md
+
+
+================================================================================
+================================================================================
+                STEP-BY-STEP PROMPTS FOR ANTIGRAVITY
+          (Copy and paste each prompt one at a time, in order)
+================================================================================
+================================================================================
+
+Below are the prompts to copy/paste into Antigravity. Each prompt builds on the
+previous one. Run them IN ORDER. Wait for each to complete before pasting the
+next one.
+
+────────────────────────────────────────────────────────────────────────────────
+ PROMPT 1 — Project Setup & Express Server
+────────────────────────────────────────────────────────────────────────────────
+
+Set up a Node.js + Express backend project
+Requirements:
+- Initialize package.json with: name "finsight-backend", version "1.0.0"
+- Install these dependencies: express, cors, multer, dotenv
+- Create server.js as the entry point:
+  - Import express, cors, dotenv
+  - Enable CORS for all origins (the React frontend is on a different port)
+  - Enable JSON body parsing
+  - Set port from .env or default to 5000
+  - Add a GET /api/health route that returns { status: "ok" }
+  - Start the server and log the port
+- Create a .env file with PORT=5000
+- Create the folder structure: routes/, controllers/, utils/, uploads/, test/
+- Do NOT create any frontend. The frontend already exists (React + Vite).
+- Create a simple test/index.html with a button to test the /api/health
+  endpoint and display the result. This HTML is ONLY for testing, not the
+  real frontend. Keep the HTML minimal — just a heading + a button + a
+  result display area.
+
+
+────────────────────────────────────────────────────────────────────────────────
+ PROMPT 2 — PDF Upload Endpoint
+────────────────────────────────────────────────────────────────────────────────
+
+Add a PDF upload feature to the FinSight backend.
+
+Requirements:
+- Create routes/upload.js with a POST /api/upload route
+- Create controllers/uploadController.js:
+  - Use multer to handle single file upload (field name: "pdfFile")
+  - Only accept PDF files (reject others with 400 error)
+  - Max file size: 10MB
+  - Store uploaded files in the uploads/ directory
+  - Generate a unique ID for each upload (use Date.now() + random string)
+  - Rename the file to [uniqueId].pdf
+  - Return JSON: { success: true, fileId: "...", fileName: "...", message: "..." }
+- Register the upload route in server.js
+- Update test/index.html:
+  - Add a file input for PDF upload
+  - Add an "Upload PDF" button
+  - On click, send the file to POST /api/upload using FormData
+  - Display the response (fileId and message) in the result area
+  - Show error messages if upload fails
+- Keep the existing /api/health test button intact.
+
+
+────────────────────────────────────────────────────────────────────────────────
+ PROMPT 3 — OCR Text Extraction (Tesseract.js)
+────────────────────────────────────────────────────────────────────────────────
+
+Add OCR text extraction to the FinSight backend using Tesseract.js.
+
+Requirements:
+- Install dependencies: tesseract.js, pdf-poppler (or pdf-parse, whichever
+  works better on Windows for converting PDF pages to images)
+- Create utils/ocrHelper.js:
+  - Function: extractTextFromPDF(filePath)
+  - Convert each page of the PDF to an image
+  - Run Tesseract.js OCR on each image
+  - Return the combined extracted text as a single string
+  - Handle errors gracefully (return error message if OCR fails)
+- Create controllers/extractController.js:
+  - GET /api/extract/:fileId
+  - Look up the PDF file in uploads/ using the fileId
+  - Call extractTextFromPDF()
+  - Return JSON: { success: true, fileId: "...", extractedText: "...",
+    pageCount: ... }
+  - Return 404 if file not found
+- Create routes/analyze.js and add the extract route there
+- Register the analyze routes in server.js
+- Update test/index.html:
+  - After upload succeeds, show an "Extract Text" button
+  - On click, call GET /api/extract/:fileId
+  - Display the extracted text in a scrollable textarea/pre area
+  - Show a loading spinner or "Extracting..." message during OCR
+
+
+────────────────────────────────────────────────────────────────────────────────
+ PROMPT 4 — Data Parsing (Raw Text → Structured JSON)
+────────────────────────────────────────────────────────────────────────────────
+
+Add a text parsing module to the FinSight backend that converts raw OCR
+text into structured financial data JSON.
+
+Requirements:
+- Create utils/parser.js:
+  - Function: parseFinancialText(rawText)
+  - Parse the raw OCR text looking for patterns like:
+    - Invoice dates (DD/MM/YYYY or similar)
+    - Descriptions / item names
+    - Amounts (numbers with or without commas, decimals)
+    - Tax amounts (GST, CGST, SGST, IGST)
+    - Identify if each line item is revenue or expense
+  - Use regex patterns to extract structured data
+  - Return a JSON object:
+    {
+      "invoices": [
+        {
+          "date": "...",
+          "description": "...",
+          "amount": 0.00,
+          "type": "revenue" | "expense",
+          "taxAmount": 0.00
+        }
+      ],
+      "summary": {
+        "totalItems": 0,
+        "dateRange": { "from": "...", "to": "..." }
+      }
+    }
+  - If parsing finds no data, return an empty invoices array with a
+    warning message
+- Create controllers/parseController.js:
+  - GET /api/parse/:fileId
+  - Get the extracted text (either re-extract or cache it)
+  - Call parseFinancialText()
+  - Return the structured JSON
+- Add the parse route to routes/analyze.js
+- Update test/index.html:
+  - After extraction, show a "Parse Data" button
+  - On click, call GET /api/parse/:fileId
+  - Display the parsed JSON in a formatted, readable way
+  - Show invoice count and date range
+
+
+────────────────────────────────────────────────────────────────────────────────
+ PROMPT 5 — Financial Calculations
+────────────────────────────────────────────────────────────────────────────────
+
+Add financial calculation logic to the FinSight backend.
+
+Requirements:
+- Create utils/calculator.js with these functions:
+  - calculateFinancials(parsedData):
+    - totalRevenue: sum of all revenue-type amounts
+    - totalExpenses: sum of all expense-type amounts
+    - netProfit: totalRevenue - totalExpenses
+    - profitMargin: (netProfit / totalRevenue) * 100
+    - expenseRatio: (totalExpenses / totalRevenue) * 100
+    - totalTax: sum of all tax amounts
+    - effectiveTaxRate: (totalTax / totalRevenue) * 100
+  - calculateMonthlyBreakdown(parsedData):
+    - Group invoices by month
+    - For each month return: { month, revenue, expenses, profit, margin }
+    - Sort chronologically
+  - Return a complete financials object with all the above
+- Create controllers/calculateController.js:
+  - GET /api/calculate/:fileId
+  - Get parsed data (re-parse or cache from previous step)
+  - Call calculateFinancials() and calculateMonthlyBreakdown()
+  - Return JSON with all financial metrics
+- Add the calculate route to routes/analyze.js
+- Update test/index.html:
+  - After parsing, show a "Calculate" button
+  - On click, call GET /api/calculate/:fileId
+  - Display results in a clean table format:
+    Total Revenue, Total Expenses, Net Profit, Profit Margin,
+    Expense Ratio, Total Tax
+  - Show monthly breakdown as a simple table
+
+
+────────────────────────────────────────────────────────────────────────────────
+ PROMPT 6 — Health Score Generation
+────────────────────────────────────────────────────────────────────────────────
+
+Add a financial health score generation system to the FinSight backend.
+
+Requirements:
+- Add to utils/calculator.js (or create a new file utils/scorer.js):
+  - Function: calculateHealthScore(financials, monthlyBreakdown)
+  - Score is 0–100, based on weighted criteria:
+    - Profit Margin Score (40% weight):
+      margin >= 20% → 100, 10-20% → 70, 5-10% → 40, 0-5% → 20, <0% → 0
+    - Revenue Trend Score (25% weight):
+      Calculate trend from monthly data. Growing → 100, Stable → 60,
+      Declining → 20
+    - Expense Control Score (20% weight):
+      expenseRatio < 50% → 100, 50-70% → 60, 70-85% → 30, >85% → 10
+    - Consistency Score (15% weight):
+      Low variance in monthly profit → 100, High variance → lower score
+  - Return:
+    {
+      "overallScore": 0-100,
+      "grade": "A+" | "A" | "B" | "C" | "D" | "F",
+      "breakdown": {
+        "profitMarginScore": { "score": ..., "weight": 40, "weighted": ... },
+        "revenueTrendScore": { ... },
+        "expenseControlScore": { ... },
+        "consistencyScore": { ... }
+      }
+    }
+  - Grade mapping: 90+ = A+, 80+ = A, 70+ = B, 60+ = C, 50+ = D, <50 = F
+- Create controllers/scoreController.js:
+  - GET /api/score/:fileId
+  - Return the health score with full breakdown
+- Add route to routes/analyze.js
+- Update test/index.html:
+  - After calculation, show a "Get Health Score" button
+  - Display the overall score prominently (large number)
+  - Show the grade (A+, A, B, etc.)
+  - Show the breakdown as a simple list
+
+
+────────────────────────────────────────────────────────────────────────────────
+ PROMPT 7 — Risk Detection
+────────────────────────────────────────────────────────────────────────────────
+
+Add a risk detection module to the FinSight backend.
+
+Requirements:
+- Create utils/riskDetector.js:
+  - Function: detectRisks(financials, monthlyBreakdown)
+  - Check for these risk conditions:
+    1. LOW_PROFIT_MARGIN: profitMargin < 10%
+       severity: "high" if < 5%, "medium" if 5-10%
+    2. HIGH_EXPENSE_RATIO: expenseRatio > 70%
+       severity: "high" if > 85%, "medium" if 70-85%
+    3. DECLINING_REVENUE: revenue decreasing for 2+ consecutive months
+       severity: "high" if 3+ months, "medium" if 2 months
+    4. NET_LOSS: netProfit < 0
+       severity: "critical"
+    5. TAX_BURDEN: effectiveTaxRate > 30%
+       severity: "medium"
+    6. INCONSISTENT_INCOME: high variance in monthly revenue
+       severity: "medium"
+    7. EXPENSE_GROWTH: expenses growing faster than revenue
+       severity: "high"
+  - Return an array of detected risks:
+    [
+      {
+        "riskId": "LOW_PROFIT_MARGIN",
+        "title": "Low Profit Margin",
+        "description": "Your profit margin is X%, which is below...",
+        "severity": "high" | "medium" | "critical",
+        "currentValue": "...",
+        "threshold": "..."
+      }
+    ]
+- Create controllers/riskController.js:
+  - GET /api/risks/:fileId
+  - Return detected risks with risk count and severity summary
+- Add route to routes/analyze.js
+- Update test/index.html:
+  - After score, show a "Detect Risks" button
+  - Display each risk with color coding:
+    critical = red, high = orange, medium = yellow
+  - Show total risk count
+
+
+────────────────────────────────────────────────────────────────────────────────
+ PROMPT 8 — Suggestion Engine
+────────────────────────────────────────────────────────────────────────────────
+
+Add a suggestion engine to the FinSight backend that provides actionable
+recommendations based on detected risks.
+
+Requirements:
+- Create utils/suggestionEngine.js:
+  - Function: generateSuggestions(risks, financials)
+  - For each detected risk, generate 1–3 specific suggestions:
+    - LOW_PROFIT_MARGIN → suggestions about pricing, cost reduction,
+      value-added services
+    - HIGH_EXPENSE_RATIO → suggestions about cost auditing, vendor
+      negotiation, process optimization
+    - DECLINING_REVENUE → suggestions about marketing, diversification,
+      customer retention
+    - NET_LOSS → urgent suggestions about cost cutting, revenue recovery,
+      seeking financial advice
+    - TAX_BURDEN → suggestions about tax planning, deductions, consulting
+      a tax advisor
+    - INCONSISTENT_INCOME → suggestions about recurring revenue, contracts,
+      diversification
+    - EXPENSE_GROWTH → suggestions about budget caps, expense tracking,
+      prioritization
+  - Also generate 1–2 general positive suggestions if things are going well
+  - Return:
+    {
+      "suggestions": [
+        {
+          "category": "cost_reduction" | "revenue_growth" | "tax" | ...,
+          "priority": "urgent" | "high" | "medium" | "low",
+          "title": "...",
+          "description": "...",
+          "relatedRisk": "RISK_ID" | null
+        }
+      ],
+      "totalSuggestions": 0,
+      "urgentCount": 0
+    }
+- Create controllers/suggestController.js:
+  - GET /api/suggestions/:fileId
+  - Return suggestions
+- Add route to routes/analyze.js
+- Update test/index.html:
+  - After risks, show a "Get Suggestions" button
+  - Display each suggestion with its priority level
+  - Group suggestions by category
+
+
+────────────────────────────────────────────────────────────────────────────────
+ PROMPT 9 — Graph Data Output
+────────────────────────────────────────────────────────────────────────────────
+
+Add a graph data endpoint to the FinSight backend that returns structured
+data ready for charts in the React frontend.
+
+Requirements:
+- Create controllers/graphController.js:
+  - GET /api/graph-data/:fileId
+  - Generate chart-ready data objects for:
+    1. Revenue vs Expenses Bar Chart:
+       { labels: ["Jan", "Feb", ...], datasets: [
+         { label: "Revenue", data: [...] },
+         { label: "Expenses", data: [...] }
+       ]}
+    2. Profit Margin Trend Line Chart:
+       { labels: ["Jan", "Feb", ...], datasets: [
+         { label: "Profit Margin %", data: [...] }
+       ]}
+    3. Revenue Breakdown Pie Chart (if categories available):
+       { labels: ["Category1", ...], data: [...] }
+    4. Health Score Gauge:
+       { score: 0-100, grade: "...", color: "..." }
+    5. Monthly Profit/Loss Bar Chart:
+       { labels: [...], data: [...], colors: [...] }
+       (green for profit, red for loss)
+  - Return all chart data in a single response
+- Add route to routes/analyze.js
+- Update test/index.html:
+  - After suggestions, show a "Get Graph Data" button
+  - Display the raw JSON graph data in a formatted code block
+  - Optionally, render a simple bar chart using HTML/CSS (no chart library
+    needed — just colored div bars is fine for testing)
+
+
+────────────────────────────────────────────────────────────────────────────────
+ PROMPT 10 — Future Prediction
+────────────────────────────────────────────────────────────────────────────────
+
+Add a future financial prediction feature to the FinSight backend.
+
+Requirements:
+- Create utils/predictor.js:
+  - Function: predictFuture(monthlyBreakdown, currentScore)
+  - Use simple linear regression on monthly profit data:
+    - Calculate slope and intercept from existing data points
+    - Project revenue, expenses, and profit for next 3 months
+    - Project future health score for next 3 months
+  - Detect trend direction: "improving", "stable", or "declining"
+  - Generate prediction warnings if score is predicted to drop below 50
+  - Return:
+    {
+      "predictions": [
+        {
+          "month": "Month+1",
+          "predictedRevenue": ...,
+          "predictedExpenses": ...,
+          "predictedProfit": ...,
+          "predictedScore": ...,
+          "confidence": "high" | "medium" | "low"
+        }
+      ],
+      "trend": "improving" | "stable" | "declining",
+      "warnings": ["..."],
+      "summary": "Your financial health is predicted to..."
+    }
+  - Confidence is based on data consistency (low variance = high confidence)
+- Create controllers/predictController.js:
+  - GET /api/predict/:fileId
+  - Return predictions
+- Add route to routes/analyze.js
+- Update test/index.html:
+  - After graph data, show a "Predict Future" button
+  - Display predictions in a table (month, revenue, expenses, profit, score)
+  - Show trend direction and any warnings
+  - Color code: improving = green, stable = blue, declining = red
+
+
+────────────────────────────────────────────────────────────────────────────────
+ PROMPT 11 — Full Analysis Pipeline Endpoint
+────────────────────────────────────────────────────────────────────────────────
+
+Add a full analysis pipeline endpoint to the FinSight backend that runs
+the entire process in one API call.
+
+Requirements:
+- Add a POST /api/analyze route to routes/analyze.js:
+  - Accept PDF file upload (same as /api/upload)
+  - Run the FULL pipeline automatically:
+    1. Save uploaded PDF
+    2. Extract text via OCR
+    3. Parse text into structured JSON
+    4. Calculate financial metrics
+    5. Generate health score
+    6. Detect risks
+    7. Generate suggestions
+    8. Prepare graph data
+    9. Run future prediction
+  - Return a SINGLE comprehensive JSON response containing ALL results:
+    {
+      "fileId": "...",
+      "extractedText": "...",
+      "parsedData": { ... },
+      "financials": { ... },
+      "healthScore": { ... },
+      "risks": [ ... ],
+      "suggestions": { ... },
+      "graphData": { ... },
+      "predictions": { ... },
+      "processingTime": "...ms"
+    }
+  - Handle errors at each step gracefully (if OCR fails, return partial
+    results with error messages)
+- Update test/index.html:
+  - Add a separate section: "Full Analysis (One Click)"
+  - File input + "Run Full Analysis" button
+  - Display ALL results in organized, collapsible sections
+  - Show processing time
+
+
+────────────────────────────────────────────────────────────────────────────────
+ PROMPT 12 — Final Polish & Testing
+────────────────────────────────────────────────────────────────────────────────
+
+Review and polish the entire FinSight backend.
+
+Requirements:
+- Review all API endpoints and ensure they work correctly
+- Add proper error handling to ALL routes:
+  - 400 for bad requests
+  - 404 for missing files
+  - 500 for server errors
+  - Include meaningful error messages
+- Add input validation:
+  - Validate fileId format
+  - Validate file exists before processing
+  - Check file size limits
+- Add console logging for each step (with timestamps):
+  - Log when upload starts/completes
+  - Log when OCR starts/completes (with duration)
+  - Log when each calculation step runs
+- Create a sample/demo mode:
+  - GET /api/demo
+  - Returns pre-built analysis results with sample data
+  - So the React frontend can work even without uploading a real PDF
+- Update test/index.html:
+  - Add a "Run Demo" button at the top that calls /api/demo
+  - Make the HTML page look clean and organized with clear sections
+  - Add a status indicator showing if the server is running
+- Create a README.md with:
+  - Project description
+  - Setup instructions (npm install, npm start)
+  - API documentation (all endpoints with request/response examples)
+  - Testing instructions
+
+
+================================================================================
+ NOTES FOR USAGE
+================================================================================
+
+1. Copy each prompt ONE AT A TIME into Antigravity.
+2. Wait for each prompt to complete before sending the next.
+3. If any step fails, debug it before moving to the next prompt.
+4. The HTML test page is for development testing ONLY.
+5. The real frontend is React + Vite (already built separately).
+6. After all 12 prompts are complete, connect the React frontend to the
+   backend API by updating the API base URL in the React app.
+7. The backend runs on port 5000 by default. The React dev server
+   (Vite) typically runs on port 5173 — CORS is enabled to allow this.
+
+================================================================================
