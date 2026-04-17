@@ -3,62 +3,61 @@ const { callLLM } = require('./llmHelper');
 async function parseFinancialText(rawText) {
     if (!rawText || typeof rawText !== 'string' || rawText.trim() === '') {
         return {
-            invoices: [],
+            companies: [],
             warning: "No text provided for parsing.",
-            summary: { totalItems: 0, dateRange: { from: null, to: null } }
+            summary: { totalCompanies: 0 }
         };
     }
 
-    const systemPrompt = `You are a financial data extraction assistant. Your job is to extract unstructured OCR text from financial documents (like invoices, bank statements, or receipts) into structured JSON. Extract each transaction or line item as an invoice object.
+    const systemPrompt = `You are a financial data extraction assistant. Your job is to extract tabular financial health data of SMEs from parsed PDF text into structured JSON format. 
+The text contains multiple pages. Different columns of metric values for the same companies are spread across different pages, so you must merge the data using the order of appearance or the row index.
 
 You MUST always return valid JSON conforming EXACTLY to this schema:
 {
-  "invoices": [
+  "companies": [
     {
-      "date": "string (DD/MM/YYYY format) or 'Unknown'",
-      "description": "string (clear description of the item or transaction)",
-      "amount": number (float, total amount, do not include currency symbols),
-      "type": "revenue" (if it is incoming money/sales) or "expense" (if it's a purchase/cost/fee),
-      "taxAmount": number (float, extract tax like GST/VAT if specifically mentioned, otherwise 0.0)
+      "businessId": "SME-202021-001",
+      "businessName": "string",
+      "state": "string",
+      "sector": "string",
+      "metrics": {
+         "grossSalesK": number (if available),
+         "netProfitK": number (if available),
+         "workingCapitalK": number (if available),
+         "currentRatio": number (if available),
+         "debtEquityRatio": number (if available),
+         "financialHealthScore": number (if available),
+         "riskLabel": "string"
+      }
     }
   ],
   "summary": {
-    "totalItems": number (total number of invoices),
-    "dateRange": {
-      "from": "string (DD/MM/YYYY or 'Unknown')",
-      "to": "string (DD/MM/YYYY or 'Unknown')"
-    }
+    "totalCompanies": number
   }
 }`;
 
-    const userPrompt = `Extract financial data from the following text:\n\n${rawText}`;
+    const userPrompt = `Extract SME financial health data from the following text and carefully merge properties across pages for each business:\n\n${rawText}`;
 
     try {
         const result = await callLLM(systemPrompt, userPrompt, true);
-        
-        // Ensure structure exists in case LLM misses top-level keys
-        if (!result.invoices) result.invoices = [];
+
+        // Ensure structure exists
+        if (!result.companies) result.companies = [];
         if (!result.summary) {
-            let fromDate = "Unknown";
-            let toDate = "Unknown";
-            if (result.invoices.length > 0) {
-                fromDate = result.invoices[0].date || "Unknown";
-                toDate = result.invoices[result.invoices.length - 1].date || "Unknown";
-            }
-            result.summary = { totalItems: result.invoices.length, dateRange: { from: fromDate, to: toDate } };
+            result.summary = { totalCompanies: result.companies.length };
         }
-        
-        if (result.invoices.length === 0 && !result.warning) {
-            result.warning = "No structured financial data could be identified in the text.";
+
+        if (result.companies.length === 0 && !result.warning) {
+            result.warning = "No SME financial health data could be identified in the text.";
         }
-        
+
         return result;
     } catch (e) {
         console.error("LLM Parsing Error:", e);
         return {
-            invoices: [],
+            companies: [],
             warning: "Failed to parse data using LLM: " + e.message,
-            summary: { totalItems: 0, dateRange: { from: null, to: null } }
+            summary: { totalCompanies: 0 }
         };
     }
 }

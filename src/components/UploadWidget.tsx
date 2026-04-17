@@ -3,7 +3,7 @@ import { UploadCloud, File } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface UploadWidgetProps {
-    onUpload: () => void;
+    onUpload: (file: File) => void;
 }
 
 export const UploadWidget: React.FC<UploadWidgetProps> = ({ onUpload }) => {
@@ -80,7 +80,7 @@ export const UploadWidget: React.FC<UploadWidgetProps> = ({ onUpload }) => {
                 </AnimatePresence>
 
                 <button
-                    onClick={onUpload}
+                    onClick={() => file && onUpload(file)}
                     disabled={!file}
                     className={`w-full h-12 mt-1 font-bold text-sm rounded-full transition-all flex items-center justify-center gap-2 active:scale-95 disabled:shadow-none ${!file ? 'bg-zinc-200 text-zinc-400' : 'bg-zinc-900 text-white shadow-md hover:bg-zinc-800'}`}
                 >

@@ -12,14 +12,13 @@ const extractText = async (req, res) => {
             return res.status(404).json({ success: false, message: 'File not found' });
         }
         
-        // Use OCR helper
-        const { text, pageCount } = await ocrHelper.extractTextFromPDF(filePath);
+        // Use OCR helper to get JSON output
+        const ocrJson = await ocrHelper.extractTextFromPDFAsJSON(filePath, fileId);
         
         return res.status(200).json({
             success: true,
             fileId,
-            extractedText: text,
-            pageCount
+            ...ocrJson
         });
         
     } catch (error) {

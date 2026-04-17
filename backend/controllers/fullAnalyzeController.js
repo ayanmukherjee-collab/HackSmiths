@@ -59,13 +59,16 @@ const fullAnalysis = (req, res) => {
 
         try {
             logger.info(`--- INIT: MASTER ANALYSIS FLOW --- [FileID: ${fileId}]`);
-            // 1. OCR
-            const ocrResult = await ocrHelper.extractTextFromPDF(filePath).catch(e => ({ error: e.message }));
-            if (ocrResult.error) throw new Error(`OCR Failed: ${ocrResult.error}`);
+            // 1. OCR (now with JSON output)
+            const ocrJson = await ocrHelper.extractTextFromPDFAsJSON(filePath, fileId).catch(e => ({ error: e.message }));
+            if (ocrJson.error) throw new Error(`OCR Failed: ${ocrJson.error}`);
+            
+            // Combine all pages text for parsing
+            const combinedText = ocrJson.pages.map(p => `--- Page ${p.pageNumber} ---\n${p.text}`).join('\n');
             
             // 2. Parse
             logger.info("Executing Parsing Matrix.");
-        const parsedData = await parser.parseFinancialText(ocrResult.text);
+        const parsedData = await parser.parseFinancialText(combinedText);
             
             // 3. Calculate
             logger.info("Executing Financial Analytics.");
@@ -124,7 +127,8 @@ const fullAnalysis = (req, res) => {
                 success: true,
                 message: "Full pipeline execution successful.",
                 fileId,
-                extractedText: ocrResult.text,
+                ocrData: ocrJson,
+                extractedText: combinedText,
                 parsedData,
                 financials,
                 healthScore,

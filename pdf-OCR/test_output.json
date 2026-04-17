@@ -1,0 +1,172 @@
+{
+  "companies": [
+    {
+      "businessId": "SME-202021-001",
+      "businessName": "Shri Sharma Traders",
+      "state": "Rajasthan",
+      "sector": "FMCG Trading",
+      "metrics": {
+        "grossSalesK": 798,
+        "netProfitK": 938,
+        "workingCapitalK": 1533,
+        "currentRatio": 3.6,
+        "debtEquityRatio": 0.75,
+        "financialHealthScore": 100,
+        "riskLabel": "Good"
+      }
+    },
+    {
+      "businessId": "SME-202021-002",
+      "businessName": "M/s Gupta Hardware",
+      "state": "Odisha",
+      "sector": "FMCG Trading",
+      "metrics": {
+        "grossSalesK": 622,
+        "netProfitK": 676,
+        "workingCapitalK": 1098,
+        "currentRatio": 1.95,
+        "debtEquityRatio": 0.32,
+        "financialHealthScore": 100,
+        "riskLabel": "Good"
+      }
+    },
+    {
+      "businessId": "SME-202021-003",
+      "businessName": "M/s Singh Enterprises",
+      "state": "Rajasthan",
+      "sector": "FMCG Trading",
+      "metrics": {
+        "grossSalesK": 646,
+        "netProfitK": 240,
+        "workingCapitalK": 3276,
+        "currentRatio": 6.08,
+        "debtEquityRatio": 0.3,
+        "financialHealthScore": 66,
+        "riskLabel": "Medium"
+      }
+    },
+    {
+      "businessId": "SME-202021-004",
+      "businessName": "Shri Patel Trading Co.",
+      "state": "Maharashtra",
+      "sector": "Hardware & Tools",
+      "metrics": {
+        "grossSalesK": 412,
+        "netProfitK": 188,
+        "workingCapitalK": 1328,
+        "currentRatio": 2.79,
+        "debtEquityRatio": 0.45,
+        "financialHealthScore": 74,
+        "riskLabel": "Good"
+      }
+    },
+    {
+      "businessId": "SME-202021-005",
+      "businessName": "Shri Yadav Steel",
+      "state": "Jharkhand",
+      "sector": "Timber & Wood",
+      "metrics": {
+        "grossSalesK": 557,
+        "netProfitK": 650,
+        "workingCapitalK": 1334,
+        "currentRatio": 2.61,
+        "debtEquityRatio": 0.17,
+        "financialHealthScore": 100,
+        "riskLabel": "Good"
+      }
+    },
+    {
+      "businessId": "SME-202021-006",
+      "businessName": "M/s Kumar Hardware",
+      "state": "West Bengal",
+      "sector": "Agri Inputs",
+      "metrics": {
+        "grossSalesK": 749,
+        "netProfitK": 282,
+        "workingCapitalK": 1152,
+        "currentRatio": 1.81,
+        "debtEquityRatio": 1.21,
+        "financialHealthScore": 63,
+        "riskLabel": "Medium"
+      }
+    },
+    {
+      "businessId": "SME-202021-007",
+      "businessName": "Shri Mishra Stores",
+      "state": "Maharashtra",
+      "sector": "Plumbing & Sanitary",
+      "metrics": {
+        "grossSalesK": 335,
+        "netProfitK": 260,
+        "workingCapitalK": 133,
+        "currentRatio": 1.1,
+        "debtEquityRatio": 0.72,
+        "financialHealthScore": 74,
+        "riskLabel": "Good"
+      }
+    },
+    {
+      "businessId": "SME-202021-008",
+      "businessName": "Sri Jha Suppliers",
+      "state": "Rajasthan",
+      "sector": "Cement & Building Mat.",
+      "metrics": {
+        "grossSalesK": 700,
+        "netProfitK": 966,
+        "workingCapitalK": 2441,
+        "currentRatio": 3.8,
+        "debtEquityRatio": 0.35,
+        "financialHealthScore": 100,
+        "riskLabel": "Good"
+      }
+    },
+    {
+      "businessId": "SME-202021-009",
+      "businessName": "Sri Verma & Sons",
+      "state": "Madhya Pradesh",
+      "sector": "Cement & Building Mat.",
+      "metrics": {
+        "grossSalesK": 761,
+        "netProfitK": 820,
+        "workingCapitalK": 2529,
+        "currentRatio": 2.68,
+        "debtEquityRatio": 0.51,
+        "financialHealthScore": 100,
+        "riskLabel": "Good"
+      }
+    },
+    {
+      "businessId": "SME-202021-010",
+      "businessName": "M/s Tiwari Industries",
+      "state": "Chhattisgarh",
+      "sector": "Cement & Building Mat.",
+      "metrics": {
+        "grossSalesK": 349,
+        "netProfitK": 365,
+        "workingCapitalK": 410,
+        "currentRatio": 1.34,
+        "debtEquityRatio": 1.24,
+        "financialHealthScore": 93,
+        "riskLabel": "Good"
+      }
+    },
+    {
+      "businessId": "SME-202021-011",
+      "businessName": "Shri Dubey Trading",
+      "state": "West Bengal",
+      "sector": "Agri Inputs",
+      "metrics": {
+        "grossSalesK": 576,
+        "netProfitK": 453,
+        "workingCapitalK": 1219,
+        "currentRatio": 2.15,
+        "debtEquityRatio": 0.42,
+        "financialHealthScore": 88,
+        "riskLabel": "Good"
+      }
+    }
+  ],
+  "summary": {
+    "totalCompanies": 11
+  }
+}

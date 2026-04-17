@@ -1,0 +1,26 @@
+◇ injected env (2) from .env // tip: ◈ encrypted .env [www.dotenvx.com]
+Testing PDF at: D:\New Websites\HackSmiths\FInSight\sme financial health 2021.pdf
+1. Running OCR Extraction...
+Extracting text directly using pdf-parse...
+PDF Extraction Error: TypeError: pdfParse is not a function
+    at Object.extractTextFromPDF (D:\New Websites\HackSmiths\FInSight\pdf-OCR\utils\ocrHelper.js:10:28)
+    at testPipeline (D:\New Websites\HackSmiths\FInSight\pdf-OCR\test.js:22:44)
+    at Object.<anonymous> (D:\New Websites\HackSmiths\FInSight\pdf-OCR\test.js:48:1)
+    at Module._compile (node:internal/modules/cjs/loader:1554:14)
+    at Object..js (node:internal/modules/cjs/loader:1706:10)
+    at Module.load (node:internal/modules/cjs/loader:1289:32)
+    at Function._load (node:internal/modules/cjs/loader:1108:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:170:5)
+Pipeline Test Failed: Error: Failed to extract text from PDF: pdfParse is not a function
+    at Object.extractTextFromPDF (D:\New Websites\HackSmiths\FInSight\pdf-OCR\utils\ocrHelper.js:22:15)
+    at testPipeline (D:\New Websites\HackSmiths\FInSight\pdf-OCR\test.js:22:44)
+    at Object.<anonymous> (D:\New Websites\HackSmiths\FInSight\pdf-OCR\test.js:48:1)
+    at Module._compile (node:internal/modules/cjs/loader:1554:14)
+    at Object..js (node:internal/modules/cjs/loader:1706:10)
+    at Module.load (node:internal/modules/cjs/loader:1289:32)
+    at Function._load (node:internal/modules/cjs/loader:1108:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:220:24)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:170:5)

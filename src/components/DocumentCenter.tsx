@@ -4,7 +4,7 @@ import { FileText, CheckCircle2, Clock, AlertCircle, Download, Search } from 'lu
 import { UploadWidget } from './UploadWidget';
 
 interface DocumentCenterProps {
-    onUpload: () => void;
+    onUpload: (file: File) => void;
 }
 
 const historicalFiles: { id: number; name: string; size: string; date: string; status: string }[] = [];

@@ -9,7 +9,7 @@ import { AnomalyTable } from './AnomalyTable';
 import { UploadWidget } from './UploadWidget';
 
 interface DashboardProps {
-    onUpload: () => void;
+    onUpload: (file: File) => void;
     onNavigateToAnalytics?: () => void;
 }
 

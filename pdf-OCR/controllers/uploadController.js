@@ -32,8 +32,10 @@ const upload = multer({
     fileFilter: fileFilter
 }).single('pdfFile');
 
+const ocrHelper = require('../utils/ocrHelper');
+
 const uploadFile = (req, res) => {
-    upload(req, res, function (err) {
+    upload(req, res, async function (err) {
         if (err instanceof multer.MulterError) {
             return res.status(400).json({ success: false, message: `Upload error: ${err.message}` });
         } else if (err) {
@@ -46,11 +48,18 @@ const uploadFile = (req, res) => {
 
         const fileId = path.parse(req.file.filename).name;
 
+        // Immediately auto-extract text using pdf-parse so it caches as a .txt for later API efficiency
+        try {
+            await ocrHelper.extractTextFromPDF(req.file.path);
+        } catch (e) {
+            console.error("Background extraction error:", e);
+        }
+
         return res.status(200).json({
             success: true,
             fileId: fileId,
             fileName: req.file.originalname,
-            message: 'File uploaded successfully'
+            message: 'File uploaded and text extracted successfully'
         });
     });
 };

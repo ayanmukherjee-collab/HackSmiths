@@ -13,12 +13,28 @@ const App: React.FC = () => {
     const [state, setState] = useState<AppState>('DASHBOARD');
     const [activeTab, setActiveTab] = useState<TabState>('dashboard');
 
-    const handleUpload = () => {
+    const [activeFileId, setActiveFileId] = useState<string | null>(null);
+
+    const handleUpload = async (file: File) => {
         setState('LOADING');
-        // Simulate AI extraction delay
-        setTimeout(() => {
-            setState('DASHBOARD');
-        }, 3500);
+        try {
+            const formData = new FormData();
+            formData.append('pdfFile', file);
+
+            const req = await fetch('http://localhost:5001/api/ocr/upload', {
+                method: 'POST',
+                body: formData
+            });
+            const res = await req.json();
+
+            if (res.success) {
+                setActiveFileId(res.fileId);
+            }
+        } catch (e) {
+            console.error("Upload failed", e);
+        }
+
+        setState('DASHBOARD');
     };
 
     return (
