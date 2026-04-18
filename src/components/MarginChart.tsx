@@ -13,12 +13,24 @@ interface MarginChartProps {
     activeFileId: string | null;
 }
 
+interface DataPoint {
+    month: string;
+    grossSales: number;
+    purchase: number;
+    grossProfit: number;
+    gpPct: number;
+    netProfit: number;
+    npPct: number;
+    // Legacy fallback fields
+    name?: string;
+    industry?: string;
+}
+
 interface GraphEntry {
     year: string;
     chartType: string;
     title: string;
-    dataKey1: string;
-    data: { name: string; industry?: string; month?: string; npPct: number }[];
+    data: DataPoint[];
 }
 
 interface GraphJson {
@@ -26,15 +38,23 @@ interface GraphJson {
     graphs: GraphEntry[];
 }
 
+type MetricKey = 'npPct' | 'gpPct' | 'grossSales' | 'netProfit';
+
+const METRICS: { key: MetricKey; label: string; suffix: string; color: string }[] = [
+    { key: 'npPct', label: 'NP %', suffix: '%', color: '#ffffff' },
+    { key: 'gpPct', label: 'GP %', suffix: '%', color: '#4ade80' },
+    { key: 'grossSales', label: 'Revenue', suffix: 'K', color: '#60a5fa' },
+    { key: 'netProfit', label: 'Net Profit', suffix: 'K', color: '#f59e0b' },
+];
+
 export const MarginChart: React.FC<MarginChartProps> = ({ activeFileId }) => {
     const [graphJson, setGraphJson] = useState<GraphJson | null>(null);
     const [selectedYear, setSelectedYear] = useState<string>('');
-    const [durationLimit, setDurationLimit] = useState(12);
+    const [activeMetric, setActiveMetric] = useState<MetricKey>('npPct');
     const [showSettings, setShowSettings] = useState(false);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
-    // Fetch graph data
     useEffect(() => {
         const url = activeFileId
             ? `http://localhost:5001/api/graph-data/${activeFileId}`
@@ -43,15 +63,11 @@ export const MarginChart: React.FC<MarginChartProps> = ({ activeFileId }) => {
         fetch(url)
             .then(res => res.json())
             .then(json => {
-                // Handle both shapes: API wraps in { data: { ... } }, static file is direct
                 const payload = json?.data || json;
-
                 if (payload?.availableYears?.length) {
-                    // New year-wise format
                     setGraphJson(payload);
-                    setSelectedYear(payload.availableYears[payload.availableYears.length - 1]); // default to latest year
+                    setSelectedYear(payload.availableYears[payload.availableYears.length - 1]);
                 } else if (payload?.graphs?.[0]) {
-                    // Legacy flat format — wrap it
                     const legacy: GraphJson = {
                         availableYears: ['All'],
                         graphs: [{ year: 'All', ...payload.graphs[0] }]
@@ -63,22 +79,33 @@ export const MarginChart: React.FC<MarginChartProps> = ({ activeFileId }) => {
             .catch(err => console.error('Failed to fetch graph data', err));
     }, [activeFileId]);
 
-
-    // Get data for selected year
     const activeGraph = graphJson?.graphs?.find(g => g.year === selectedYear);
-    const chartData = activeGraph?.data?.map(d => ({
-        name: d.month ? d.month.substring(0, 3) : 'N/A',
-        margin: d.npPct,
-        fullName: d.name,
-        industry: d.industry || 'Unknown Sector',
-        fullMonth: d.month || 'Unknown'
-    })) || [];
+    const chartData = activeGraph?.data?.map(d => {
+        // Intelligent label shortening: "January" → "Jan", "Dec 2022" → "D22"
+        const rawMonth = d.month || d.name || 'N/A';
+        let label = rawMonth;
+        const quarterMatch = rawMonth.match(/^(\w{3})\s+(\d{4})$/);
+        if (quarterMatch) {
+            label = quarterMatch[1][0] + quarterMatch[2].slice(2);
+        } else if (rawMonth.length > 3) {
+            label = rawMonth.substring(0, 3);
+        }
+        return {
+            label,
+            fullMonth: rawMonth,
+            npPct: d.npPct ?? 0,
+            gpPct: d.gpPct ?? 0,
+            grossSales: d.grossSales ?? 0,
+            netProfit: d.netProfit ?? 0,
+            grossProfit: d.grossProfit ?? 0,
+            purchase: d.purchase ?? 0,
+        };
+    }) || [];
 
-    const visibleData = chartData.slice(Math.max(chartData.length - durationLimit, 0));
-    const currentMargin = visibleData.length > 0 ? visibleData[visibleData.length - 1].margin : 0;
+    const currentMetricInfo = METRICS.find(m => m.key === activeMetric)!;
+    const currentValue = chartData.length > 0 ? chartData[chartData.length - 1][activeMetric] : 0;
     const availableYears = graphJson?.availableYears || [];
 
-    // Handle click outside to close popover
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -96,12 +123,11 @@ export const MarginChart: React.FC<MarginChartProps> = ({ activeFileId }) => {
                 <div>
                     <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full mb-4">
                         <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                        <span className="text-[10px] font-bold tracking-wider uppercase text-zinc-300">Net Profit Margin</span>
+                        <span className="text-[10px] font-bold tracking-wider uppercase text-zinc-300">{currentMetricInfo.label}</span>
                     </div>
-                    <p className="text-3xl font-bold tracking-tight">{currentMargin}%</p>
+                    <p className="text-3xl font-bold tracking-tight">{currentValue}{currentMetricInfo.suffix}</p>
                 </div>
 
-                {/* Settings Gear Popover */}
                 <div className="relative" ref={menuRef}>
                     <button
                         onClick={() => setShowSettings(!showSettings)}
@@ -146,26 +172,19 @@ export const MarginChart: React.FC<MarginChartProps> = ({ activeFileId }) => {
                             </div>
 
                             <div>
-                                <div className="flex items-center justify-between mb-2">
-                                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
-                                        Companies Shown
-                                    </label>
-                                    <span className="text-xs font-black text-primary">{durationLimit}</span>
-                                </div>
-                                <input
-                                    type="range"
-                                    min="3"
-                                    max={Math.max(chartData.length, 12)}
-                                    step="1"
-                                    value={durationLimit}
-                                    onChange={(e) => setDurationLimit(Number(e.target.value))}
-                                    className="w-full h-1.5 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-primary"
-                                />
-                                <div className="flex justify-between text-[9px] font-bold text-zinc-500 mt-2 tracking-widest">
-                                    <span>3</span>
-                                    <span>6</span>
-                                    <span>9</span>
-                                    <span>All</span>
+                                <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">
+                                    Metric
+                                </label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {METRICS.map(m => (
+                                        <button
+                                            key={m.key}
+                                            onClick={() => setActiveMetric(m.key)}
+                                            className={`px-3 py-2 rounded-xl text-xs font-bold transition-all ${activeMetric === m.key ? 'bg-primary text-zinc-900' : 'bg-zinc-900 text-zinc-400 hover:bg-zinc-700 hover:text-white'}`}
+                                        >
+                                            {m.label}
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
 
@@ -176,9 +195,9 @@ export const MarginChart: React.FC<MarginChartProps> = ({ activeFileId }) => {
 
             <div className="w-full h-[260px] min-h-[260px] -ml-4 mt-auto">
                 <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={visibleData} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
+                    <LineChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
                         <XAxis
-                            dataKey="name"
+                            dataKey="label"
                             axisLine={false}
                             tickLine={false}
                             tick={{ fill: '#71717a', fontSize: 11, fontWeight: 500 }}
@@ -201,16 +220,29 @@ export const MarginChart: React.FC<MarginChartProps> = ({ activeFileId }) => {
                                 fontWeight: 700,
                                 boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)',
                             }}
-                            formatter={(value: number, _name: string, props: any) => [`${value}%`, `${props.payload.fullMonth} | ${props.payload.industry} | ${props.payload.fullName}`]}
+                            formatter={(_value: number, _name: string, props: any) => {
+                                const d = props.payload;
+                                const val = d[activeMetric];
+                                // Auto-detect unit: corporate values are in Crores (typically > 1000)
+                                const isCr = d.grossSales > 1000;
+                                const unit = isCr ? 'Cr' : 'K';
+                                const fmtVal = currentMetricInfo.suffix === '%' ? `${val}%` : `₹${val.toLocaleString('en-IN')} ${unit}`;
+                                const rev = `₹${d.grossSales.toLocaleString('en-IN')} ${unit}`;
+                                const np = `₹${d.netProfit.toLocaleString('en-IN')} ${unit}`;
+                                return [
+                                    fmtVal,
+                                    `${d.fullMonth} · Rev: ${rev} · NP: ${np}`
+                                ];
+                            }}
                             labelStyle={{ display: 'none' }}
                         />
 
                         <Line
                             type="monotone"
-                            dataKey="margin"
-                            stroke="#ffffff"
+                            dataKey={activeMetric}
+                            stroke={currentMetricInfo.color}
                             strokeWidth={4}
-                            dot={{ stroke: '#18181b', strokeWidth: 3, r: 6, fill: '#fff', cursor: 'pointer', onClick: () => { } }}
+                            dot={{ stroke: '#18181b', strokeWidth: 3, r: 6, fill: '#fff', cursor: 'pointer' }}
                             activeDot={{ r: 8, fill: '#f97316', stroke: '#18181b', strokeWidth: 4, cursor: 'pointer' }}
                             animationDuration={600}
                         />
