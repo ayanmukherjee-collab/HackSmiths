@@ -3,6 +3,12 @@ const path = require('path');
 
 const uploadsDir = path.join(__dirname, '../uploads');
 
+const MONTH_ORDER = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+];
+const MONTH_SET = new Set(MONTH_ORDER);
+
 function generateGraphData() {
     const files = fs.readdirSync(uploadsDir);
     const txtFiles = files.filter(f => f.endsWith('.txt'));
@@ -31,6 +37,13 @@ function generateGraphData() {
 
         let section = 0;
         let npPctColumnIndex = -1;
+        let companiesHeaders = [];
+        let hasMonthInCompanies = false;
+
+        // Column indices for the companies section
+        let colIdxName = 1;
+        let colIdxSector = -1;
+        let colIdxMonth = -1;
 
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
@@ -41,8 +54,25 @@ function generateGraphData() {
                 continue;
             }
 
-            if (line.includes('Business ID') && line.includes('Business Name')) {
+            // Detect companies header (handles "Business Name" and "Business_Name")
+            if (line.includes('Business ID') && (line.includes('Business Name') || line.includes('Business_Name'))) {
                 section = 1;
+                companiesHeaders = line.split(/\s{2,}/);
+
+                // Dynamically find column indices
+                colIdxName = companiesHeaders.findIndex(h => h.includes('Business') && (h.includes('Name') || h.includes('_Name')));
+                colIdxSector = companiesHeaders.findIndex(h => h.trim() === 'Sector');
+
+                // Check if there's a month/financial year column by looking if the last column is a "Financial Year" field
+                // or if the data rows will have month names at the end
+                hasMonthInCompanies = companiesHeaders.some(h => h.includes('Financial Year'));
+                if (hasMonthInCompanies) {
+                    colIdxMonth = companiesHeaders.length - 1; // month is last column in data rows
+                }
+
+                if (colIdxName < 0) colIdxName = 1;
+                if (colIdxSector < 0) colIdxSector = companiesHeaders.findIndex(h => h.trim() === 'State') + 1; // Sector is after State
+
                 continue;
             }
 
@@ -53,11 +83,17 @@ function generateGraphData() {
                 continue;
             }
 
-            if (line.includes('Gross Sales K') || line.includes('Loading Unloading K') ||
+            // Detect sales section header — extract months from data rows if companies section didn't have them
+            if (line.includes('Gross Sales K') && line.includes('Purchase K')) {
+                section = 3; // sales section — used to extract months when companies don't have them
+                continue;
+            }
+
+            if (line.includes('Loading Unloading K') ||
                 line.includes('Opening Stock K') || line.includes('Sundry Debtors K') ||
                 line.includes('Owner Capital K') || line.includes('CC Limit Sanctioned K') ||
                 line.includes('Shop Rent K') || line.includes('Net Profit K') ||
-                line.includes('Total Assets K')) {
+                line.includes('Total Assets K') || line.includes('Total Asset K')) {
                 section = 0;
                 continue;
             }
@@ -65,9 +101,14 @@ function generateGraphData() {
             if (section === 1) {
                 const parts = line.split(/\s{2,}/);
                 if (parts.length >= 2) {
-                    companyNames.push(parts[1]);
-                    months.push(parts[parts.length - 1]);
-                    industries.push(parts.length >= 4 ? parts[parts.length - 2] : "Unknown");
+                    companyNames.push(parts[colIdxName] || parts[1]);
+                    industries.push(parts[colIdxSector] || 'Unknown');
+
+                    if (hasMonthInCompanies) {
+                        const lastPart = parts[parts.length - 1];
+                        months.push(MONTH_SET.has(lastPart) ? lastPart : 'Unknown');
+                    }
+                    // If no month column in companies section, we'll fill months from sales rows
                 }
             } else if (section === 2 && npPctColumnIndex >= 0) {
                 const parts = line.split(/\s{2,}|\s+/);
@@ -78,6 +119,12 @@ function generateGraphData() {
                     if (!isNaN(npPct)) {
                         profitMargins.push(npPct);
                     }
+                }
+            } else if (section === 3 && !hasMonthInCompanies) {
+                // Extract month from sales data rows (e.g., "January   7981   6465...")
+                const parts = line.split(/\s{2,}/);
+                if (parts.length > 0 && MONTH_SET.has(parts[0])) {
+                    months.push(parts[0]);
                 }
             }
         }

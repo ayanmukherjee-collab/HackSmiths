@@ -13,6 +13,8 @@ async function callLLM(systemPrompt, userPrompt, isJsonResponse = false) {
         },
         body: JSON.stringify({
             model: "deepseek/deepseek-chat",
+            temperature: 0.1,
+            max_tokens: 3000,
             messages: [
                 { role: "system", content: systemPrompt },
                 { role: "user", content: userPrompt }
@@ -31,7 +33,19 @@ async function callLLM(systemPrompt, userPrompt, isJsonResponse = false) {
 
     if (isJsonResponse) {
         try {
-            const cleanContent = content.replace(/```json/gi, "").replace(/```/gi, "").trim();
+            let cleanContent = content.replace(/```json/gi, "").replace(/```/gi, "").trim();
+            const firstBrace = cleanContent.indexOf('{');
+            const firstBracket = cleanContent.indexOf('[');
+            const startIndex = firstBrace !== -1 && firstBracket !== -1 ? Math.min(firstBrace, firstBracket) : Math.max(firstBrace, firstBracket);
+
+            const lastBrace = cleanContent.lastIndexOf('}');
+            const lastBracket = cleanContent.lastIndexOf(']');
+            const endIndex = lastBrace !== -1 && lastBracket !== -1 ? Math.max(lastBrace, lastBracket) : Math.max(lastBrace, lastBracket);
+
+            if (startIndex !== -1 && endIndex !== -1 && startIndex <= endIndex) {
+                cleanContent = cleanContent.substring(startIndex, endIndex + 1);
+            }
+
             return JSON.parse(cleanContent);
         } catch (e) {
             console.error("Failed to parse JSON string:", content);

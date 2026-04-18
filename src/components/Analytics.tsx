@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BarChart, Bar, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { FileText, X, Sparkles } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import html2pdf from 'html2pdf.js';
+
 
 export const Analytics: React.FC<{ activeFileId: string | null }> = ({ activeFileId }) => {
     const [isGenerating, setIsGenerating] = useState(false);
@@ -17,22 +20,46 @@ export const Analytics: React.FC<{ activeFileId: string | null }> = ({ activeFil
             .then(res => setGraphData(res.data))
             .catch(err => console.error(err));
 
-        if (activeFileId) {
-            fetch(`http://localhost:5001/api/strategy/predict/${activeFileId}`)
-                .then(res => res.json())
-                .then(res => setStrategy(res.data))
-                .catch(err => console.error(err));
-        } else {
-            setStrategy(null);
-        }
+        setStrategy(null);
     }, [activeFileId]);
 
-    const handleGenerate = () => {
+    const handleGenerate = async () => {
+        if (strategy) {
+            setShowDoc(true);
+            return;
+        }
+
         setIsGenerating(true);
-        setTimeout(() => {
+        try {
+            const endpoint = activeFileId
+                ? `http://localhost:5001/api/strategy/predict/${activeFileId}`
+                : `http://localhost:5001/api/strategy/portfolio`;
+
+            const response = await fetch(endpoint);
+            const res = await response.json();
+
+            setStrategy(res.data);
+        } catch (error) {
+            console.error(error);
+        } finally {
             setIsGenerating(false);
             setShowDoc(true);
-        }, 1500);
+        }
+    };
+
+    const handleDownloadPDF = () => {
+        const element = document.getElementById('strategy-doc-content');
+        if (!element) return;
+
+        const opt: any = {
+            margin: 0.5,
+            filename: 'FInSight_Strategic_Action_Plan.pdf',
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, ignoreElements: (node: any) => node.id === 'pdf-actions' },
+            jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+        };
+
+        html2pdf().set(opt).from(element).save();
     };
 
     // Construct chart data from graphData payload dynamically
@@ -79,9 +106,9 @@ export const Analytics: React.FC<{ activeFileId: string | null }> = ({ activeFil
 
                     <div className="flex-1 w-full -ml-4">
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={cashflowData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }} barSize={32}>
+                            <BarChart data={cashflowData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }} barSize={32}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e4e4e7" />
-                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#71717a', fontWeight: 600 }} dy={10} />
+                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#71717a', fontWeight: 600 }} dy={10} padding={{ left: 20, right: 20 }} />
                                 <YAxis hide={true} />
                                 <Tooltip
                                     cursor={{ fill: '#f4f4f5' }}
@@ -140,7 +167,7 @@ export const Analytics: React.FC<{ activeFileId: string | null }> = ({ activeFil
 
                     <div className="flex-1 w-full -ml-4">
                         <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={projectionData} margin={{ top: 20, right: 20, left: 0, bottom: 0 }}>
+                            <AreaChart data={projectionData} margin={{ top: 20, right: 10, left: 10, bottom: 0 }}>
                                 <defs>
                                     <linearGradient id="colorActual" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor="#18181b" stopOpacity={0.2} />
@@ -151,7 +178,7 @@ export const Analytics: React.FC<{ activeFileId: string | null }> = ({ activeFil
                                         <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
                                     </linearGradient>
                                 </defs>
-                                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#71717a', fontWeight: 600 }} dy={10} />
+                                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#71717a', fontWeight: 600 }} dy={10} padding={{ left: 20, right: 20 }} />
                                 <YAxis hide={true} />
                                 <Tooltip
                                     contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
@@ -193,12 +220,26 @@ export const Analytics: React.FC<{ activeFileId: string | null }> = ({ activeFil
                             </button>
                         </div>
                         <div className="flex-1 overflow-y-auto p-6 md:p-12 lg:p-16">
-                            <div className="max-w-4xl mx-auto space-y-12 pb-24">
+                            <div id="strategy-doc-content" className="max-w-4xl mx-auto space-y-12 pb-24">
                                 <section>
                                     <h1 className="text-4xl md:text-5xl font-black text-zinc-900 tracking-tight mb-6">Executive Summary</h1>
-                                    <p className="text-xl text-zinc-600 leading-relaxed font-medium">
-                                        {strategy?.executiveSummary || "Based on the analysis of your Q3 financial data and projected revenue models, your operational efficiency has positioned the company strongly. With EBITDA outperforming industry standards by 14%, there is a clear opportunity to accelerate growth."}
-                                    </p>
+                                    <div className="text-xl text-zinc-600 leading-relaxed font-medium">
+                                        <ReactMarkdown
+                                            components={{
+                                                h1: ({ node, ...props }) => <h1 className="text-3xl lg:text-4xl font-black text-zinc-900 mt-10 mb-6 pb-4 border-b border-zinc-200/60" {...props} />,
+                                                h2: ({ node, ...props }) => <h2 className="text-2xl lg:text-3xl font-bold text-zinc-900 mt-8 mb-4" {...props} />,
+                                                h3: ({ node, ...props }) => <h3 className="text-xl lg:text-2xl font-bold text-zinc-900 mt-6 mb-3" {...props} />,
+                                                ul: ({ node, ...props }) => <ul className="list-disc pl-6 mb-6 space-y-3 marker:text-violet-500" {...props} />,
+                                                ol: ({ node, ...props }) => <ol className="list-decimal pl-6 mb-6 space-y-3 marker:text-violet-500 font-semibold text-zinc-900" {...props} />,
+                                                li: ({ node, ...props }) => <li className="text-[1.125rem] leading-relaxed text-zinc-600 font-medium" {...props} />,
+                                                p: ({ node, ...props }) => <p className="mb-6 text-[1.125rem] leading-relaxed text-zinc-600 font-medium" {...props} />,
+                                                strong: ({ node, ...props }) => <strong className="font-extrabold text-zinc-900" {...props} />,
+                                                blockquote: ({ node, ...props }) => <blockquote className="border-l-4 border-violet-500 pl-4 italic text-zinc-500 my-6 bg-zinc-50 py-3 rounded-r-xl" {...props} />
+                                            }}
+                                        >
+                                            {strategy?.executiveSummary || "Generating comprehensive financial insight based on available data... Please wait."}
+                                        </ReactMarkdown>
+                                    </div>
                                 </section>
 
                                 <section>
@@ -225,13 +266,13 @@ export const Analytics: React.FC<{ activeFileId: string | null }> = ({ activeFil
                                         </div>
                                         <h2 className="text-3xl font-bold tracking-tight mb-6">Immediate Next Steps</h2>
                                         <p className="text-xl leading-relaxed text-zinc-300 font-medium mb-8 lg:max-w-3xl relative z-10">
-                                            {strategy?.nextSteps || "No next steps available."}
+                                            {strategy?.nextSteps || "Synthesizing immediate next steps..."}
                                         </p>
-                                        <div className="flex flex-wrap gap-4 relative z-10">
+                                        <div id="pdf-actions" className="flex flex-wrap gap-4 relative z-10">
                                             <button className="px-8 py-4 bg-white text-zinc-900 font-bold rounded-2xl hover:bg-zinc-200 transition-colors">
                                                 Share Document
                                             </button>
-                                            <button className="px-8 py-4 bg-zinc-800 text-white font-bold rounded-2xl hover:bg-zinc-700 transition-colors">
+                                            <button onClick={handleDownloadPDF} className="px-8 py-4 bg-zinc-800 text-white font-bold rounded-2xl hover:bg-zinc-700 transition-colors">
                                                 Download PDF
                                             </button>
                                         </div>

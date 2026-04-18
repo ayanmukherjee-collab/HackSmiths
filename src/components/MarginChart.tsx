@@ -63,10 +63,11 @@ export const MarginChart: React.FC<MarginChartProps> = ({ activeFileId }) => {
             .catch(err => console.error('Failed to fetch graph data', err));
     }, [activeFileId]);
 
+
     // Get data for selected year
     const activeGraph = graphJson?.graphs?.find(g => g.year === selectedYear);
     const chartData = activeGraph?.data?.map(d => ({
-        name: d.month ? d.month.substring(0, 3) : d.name.split(' ').slice(-1)[0], // show month on x-axis if available
+        name: d.month ? d.month.substring(0, 3) : 'N/A',
         margin: d.npPct,
         fullName: d.name,
         industry: d.industry || 'Unknown Sector',
@@ -175,7 +176,7 @@ export const MarginChart: React.FC<MarginChartProps> = ({ activeFileId }) => {
 
             <div className="w-full h-[260px] min-h-[260px] -ml-4 mt-auto">
                 <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={visibleData} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
+                    <LineChart data={visibleData} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
                         <XAxis
                             dataKey="name"
                             axisLine={false}
@@ -183,6 +184,7 @@ export const MarginChart: React.FC<MarginChartProps> = ({ activeFileId }) => {
                             tick={{ fill: '#71717a', fontSize: 11, fontWeight: 500 }}
                             dy={10}
                             interval={0}
+                            padding={{ left: 20, right: 20 }}
                         />
                         <YAxis
                             hide={true}
@@ -208,8 +210,8 @@ export const MarginChart: React.FC<MarginChartProps> = ({ activeFileId }) => {
                             dataKey="margin"
                             stroke="#ffffff"
                             strokeWidth={4}
-                            dot={{ stroke: '#18181b', strokeWidth: 3, r: 4, fill: '#fff' }}
-                            activeDot={{ r: 8, fill: '#f97316', stroke: '#18181b', strokeWidth: 4 }}
+                            dot={{ stroke: '#18181b', strokeWidth: 3, r: 6, fill: '#fff', cursor: 'pointer', onClick: () => { } }}
+                            activeDot={{ r: 8, fill: '#f97316', stroke: '#18181b', strokeWidth: 4, cursor: 'pointer' }}
                             animationDuration={600}
                         />
                     </LineChart>
