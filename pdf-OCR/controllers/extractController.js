@@ -16,14 +16,20 @@ const extractText = async (req, res) => {
         let pageCountValue;
 
         // Cache extraction text capability
-        const cachedText = ocrHelper.getCachedText(filePath);
-        if (cachedText) {
-            extractedText = cachedText;
-            pageCountValue = null; // Can't easily know without metadata from cached version, we could store it separately.
+        const tesseractTxtPath = path.join(uploadDir, `${fileId}.txt`);
+        if (fs.existsSync(tesseractTxtPath)) {
+            extractedText = fs.readFileSync(tesseractTxtPath, 'utf8');
+            pageCountValue = null;
         } else {
-            const { text, pageCount } = await ocrHelper.extractTextFromPDF(filePath);
-            extractedText = text;
-            pageCountValue = pageCount;
+            const cachedText = ocrHelper.getCachedText(filePath);
+            if (cachedText) {
+                extractedText = cachedText;
+                pageCountValue = null; // Can't easily know without metadata from cached version, we could store it separately.
+            } else {
+                const { text, pageCount } = await ocrHelper.extractTextFromPDF(filePath);
+                extractedText = text;
+                pageCountValue = pageCount;
+            }
         }
 
         return res.status(200).json({

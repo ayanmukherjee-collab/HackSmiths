@@ -1,6 +1,6 @@
-const { OPENROUTER_API_KEY } = process.env;
-
 async function callLLM(systemPrompt, userPrompt, isJsonResponse = false) {
+    const { OPENROUTER_API_KEY } = process.env;
+
     if (!OPENROUTER_API_KEY) {
         throw new Error("OPENROUTER_API_KEY environment variable is missing.");
     }

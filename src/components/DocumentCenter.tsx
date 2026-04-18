@@ -1,15 +1,52 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, CheckCircle2, Clock, AlertCircle, Download, Search } from 'lucide-react';
+import { FileText, CheckCircle2, Clock, AlertCircle, Download, Search, Trash2, Eye } from 'lucide-react';
 import { UploadWidget } from './UploadWidget';
 
 interface DocumentCenterProps {
     onUpload: (file: File) => void;
 }
 
-const historicalFiles: { id: number; name: string; size: string; date: string; status: string }[] = [];
-
 export const DocumentCenter: React.FC<DocumentCenterProps> = ({ onUpload }) => {
+    const [historicalFiles, setHistoricalFiles] = useState<{ id: string; name: string; size: string; date: string; status: string }[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchFiles = async () => {
+        try {
+            const res = await fetch('http://localhost:5001/api/files');
+            const data = await res.json();
+            if (data.success && data.files) {
+                setHistoricalFiles(data.files);
+            }
+        } catch (err) {
+            console.error("Failed to fetch files", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchFiles();
+        // Option: we could set an interval to auto-refresh if there's processing going on, or just rely on onUpload trigger.
+    }, []);
+
+    const handleDelete = async (id: string) => {
+        if (!confirm("Are you sure you want to delete this file from the repository?")) return;
+
+        try {
+            const res = await fetch(`http://localhost:5001/api/files/${id}`, { method: 'DELETE' });
+            const data = await res.json();
+            if (data.success) {
+                fetchFiles();
+            } else {
+                alert("Failed to delete file: " + data.message);
+            }
+        } catch (err) {
+            console.error("Failed to delete file", err);
+            alert("Error trying to delete file");
+        }
+    };
+
     return (
         <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -110,9 +147,24 @@ export const DocumentCenter: React.FC<DocumentCenterProps> = ({ onUpload }) => {
                                             )}
                                         </td>
                                         <td className="py-4 px-6 text-right">
-                                            <button className="w-10 h-10 rounded-full inline-flex items-center justify-center text-zinc-400 hover:text-zinc-900 hover:bg-zinc-200 transition-colors">
-                                                <Download size={18} />
-                                            </button>
+                                            <div className="flex items-center justify-end gap-2">
+                                                <a
+                                                    href={`http://localhost:5001/uploads/${file.id}.pdf`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="w-8 h-8 rounded-full inline-flex items-center justify-center text-zinc-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                                                    title="Preview PDF"
+                                                >
+                                                    <Eye size={16} />
+                                                </a>
+                                                <button
+                                                    onClick={() => handleDelete(file.id)}
+                                                    className="w-8 h-8 rounded-full inline-flex items-center justify-center text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                                                    title="Delete File"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}

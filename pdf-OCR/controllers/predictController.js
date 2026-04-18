@@ -26,10 +26,16 @@ const getPredictions = async (req, res) => {
         }
 
         // 1. Get Text
-        let text = ocrHelper.getCachedText(filePath);
-        if (!text) {
-            const result = await ocrHelper.extractTextFromPDF(filePath);
-            text = result.text;
+        const tesseractTxtPath = path.join(uploadDir, `${fileId}.txt`);
+        let text;
+        if (fs.existsSync(tesseractTxtPath)) {
+            text = fs.readFileSync(tesseractTxtPath, 'utf8');
+        } else {
+            text = ocrHelper.getCachedText(filePath);
+            if (!text) {
+                const result = await ocrHelper.extractTextFromPDF(filePath);
+                text = result.text;
+            }
         }
 
         // 2. Get Parsed Data

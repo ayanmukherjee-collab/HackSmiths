@@ -9,8 +9,11 @@ interface Anomaly {
     severity: 'HIGH' | 'MEDIUM' | 'LOW';
 }
 
-export const AnomalyTable: React.FC = () => {
-    const anomalies: Anomaly[] = [];
+interface AnomalyTableProps {
+    anomalies: Anomaly[];
+}
+
+export const AnomalyTable: React.FC<AnomalyTableProps> = ({ anomalies }) => {
 
     return (
         <div className="bg-white rounded-[40px] p-6 lg:p-8 shadow-sm border border-zinc-200/60 w-full col-span-1 lg:col-span-3">
@@ -40,32 +43,40 @@ export const AnomalyTable: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-50">
-                        {anomalies.map((item) => (
-                            <tr key={item.id} className="hover:bg-zinc-50/50 transition-colors group">
-                                <td className="py-4 pl-4">
-                                    <span className="text-sm font-bold text-zinc-900">{item.date}</span>
-                                </td>
-                                <td className="py-4 pl-2">
-                                    <div className="flex flex-col">
-                                        <span className="text-sm font-semibold text-zinc-800">{item.description}</span>
-                                        <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider mt-0.5">{item.id}</span>
-                                    </div>
-                                </td>
-                                <td className="py-4 text-right">
-                                    <span className="text-sm font-black text-zinc-900">{item.amount}</span>
-                                </td>
-                                <td className="py-4 text-right pr-4">
-                                    <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest ${item.severity === 'HIGH' ? 'bg-primary/10 text-primary' :
-                                        item.severity === 'MEDIUM' ? 'bg-amber-100/50 text-amber-600' :
-                                            'bg-zinc-100 text-zinc-500'
-                                        }`}>
-                                        {item.severity === 'HIGH' && <ShieldAlert size={14} strokeWidth={3} />}
-                                        {item.severity === 'MEDIUM' && <AlertCircle size={14} strokeWidth={3} />}
-                                        {item.severity}
-                                    </div>
+                        {anomalies.length > 0 ? (
+                            anomalies.map((item, index) => (
+                                <tr key={`${item.id}-${index}`} className="hover:bg-zinc-50/50 transition-colors group">
+                                    <td className="py-4 pl-4">
+                                        <span className="text-sm font-bold text-zinc-900">{item.date}</span>
+                                    </td>
+                                    <td className="py-4 pl-2">
+                                        <div className="flex flex-col">
+                                            <span className="text-sm font-semibold text-zinc-800">{item.description}</span>
+                                            <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider mt-0.5">{item.id}</span>
+                                        </div>
+                                    </td>
+                                    <td className="py-4 text-right">
+                                        <span className="text-sm font-black text-zinc-900">{item.amount}</span>
+                                    </td>
+                                    <td className="py-4 text-right pr-4">
+                                        <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest ${item.severity === 'HIGH' ? 'bg-primary/10 text-primary' :
+                                            item.severity === 'MEDIUM' ? 'bg-amber-100/50 text-amber-600' :
+                                                'bg-zinc-100 text-zinc-500'
+                                            }`}>
+                                            {item.severity === 'HIGH' && <ShieldAlert size={14} strokeWidth={3} />}
+                                            {item.severity === 'MEDIUM' && <AlertCircle size={14} strokeWidth={3} />}
+                                            {item.severity}
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))
+                        ) : (
+                            <tr>
+                                <td colSpan={4} className="py-8 text-center text-zinc-500 font-semibold text-sm">
+                                    No discrepancies found.
                                 </td>
                             </tr>
-                        ))}
+                        )}
                     </tbody>
                 </table>
             </div>

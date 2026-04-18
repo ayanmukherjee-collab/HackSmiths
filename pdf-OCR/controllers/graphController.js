@@ -25,11 +25,27 @@ const getGraphData = async (req, res) => {
       });
     }
 
+    // Return shared graph.json if LLM cache isn't ready yet
+    const sharedGraphPath = path.join(uploadDir, 'graph.json');
+    if (fs.existsSync(sharedGraphPath)) {
+      return res.status(200).json({
+        success: true,
+        fileId,
+        data: JSON.parse(fs.readFileSync(sharedGraphPath, 'utf8'))
+      });
+    }
+
     // 1. Get Text
-    let text = ocrHelper.getCachedText(filePath);
-    if (!text) {
-      const result = await ocrHelper.extractTextFromPDF(filePath);
-      text = result.text;
+    const tesseractTxtPath = path.join(uploadDir, `${fileId}.txt`);
+    let text;
+    if (fs.existsSync(tesseractTxtPath)) {
+      text = fs.readFileSync(tesseractTxtPath, 'utf8');
+    } else {
+      text = ocrHelper.getCachedText(filePath);
+      if (!text) {
+        const result = await ocrHelper.extractTextFromPDF(filePath);
+        text = result.text;
+      }
     }
 
     // 2. Get Parsed Data

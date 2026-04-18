@@ -1,23 +1,43 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BarChart, Bar, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { FileText, X, Sparkles } from 'lucide-react';
 
-const cashflowData: { name: string; inflow: number; outflow: number }[] = [];
-
-const projectionData: { month: string; actual: number | null; projection: number }[] = [];
-
-export const Analytics: React.FC = () => {
+export const Analytics: React.FC<{ activeFileId: string | null }> = ({ activeFileId }) => {
     const [isGenerating, setIsGenerating] = useState(false);
     const [showDoc, setShowDoc] = useState(false);
+    const [graphData, setGraphData] = useState<any>(null);
+    const [strategy, setStrategy] = useState<any>(null);
+
+    useEffect(() => {
+        const endpoint = activeFileId ? `http://localhost:5001/api/graph-data/${activeFileId}` : `http://localhost:5001/api/analytics`;
+
+        fetch(endpoint)
+            .then(res => res.json())
+            .then(res => setGraphData(res.data))
+            .catch(err => console.error(err));
+
+        if (activeFileId) {
+            fetch(`http://localhost:5001/api/strategy/predict/${activeFileId}`)
+                .then(res => res.json())
+                .then(res => setStrategy(res.data))
+                .catch(err => console.error(err));
+        } else {
+            setStrategy(null);
+        }
+    }, [activeFileId]);
 
     const handleGenerate = () => {
         setIsGenerating(true);
         setTimeout(() => {
             setIsGenerating(false);
             setShowDoc(true);
-        }, 2000);
+        }, 1500);
     };
+
+    // Construct chart data from graphData payload dynamically
+    const cashflowData = activeFileId ? graphData?.graphs?.[1]?.data || [] : graphData?.cashflow || [];
+    const projectionData = activeFileId ? graphData?.graphs?.[2]?.data || [] : graphData?.projection || [];
 
     return (
         <motion.div
@@ -177,34 +197,24 @@ export const Analytics: React.FC = () => {
                                 <section>
                                     <h1 className="text-4xl md:text-5xl font-black text-zinc-900 tracking-tight mb-6">Executive Summary</h1>
                                     <p className="text-xl text-zinc-600 leading-relaxed font-medium">
-                                        Based on the analysis of your Q3 financial data and projected revenue models, your operational efficiency has positioned the company strongly. With EBITDA outperforming industry standards by <span className="text-violet-600 font-bold">14%</span>, there is a clear opportunity to accelerate growth.
+                                        {strategy?.executiveSummary || "Based on the analysis of your Q3 financial data and projected revenue models, your operational efficiency has positioned the company strongly. With EBITDA outperforming industry standards by 14%, there is a clear opportunity to accelerate growth."}
                                     </p>
                                 </section>
 
                                 <section>
                                     <h2 className="text-3xl font-bold text-zinc-900 tracking-tight mb-8">Key Recommendations</h2>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div className="bg-zinc-50 p-8 rounded-[32px] border border-zinc-100 relative overflow-hidden">
-                                            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mb-6 shadow-sm">
-                                                <span className="text-2xl font-black text-zinc-900">01</span>
+                                        {strategy?.keyRecommendations ? strategy.keyRecommendations.map((rec: any, idx: number) => (
+                                            <div key={idx} className={`bg-zinc-50 p-8 rounded-[32px] border border-zinc-100 relative overflow-hidden ${idx === 2 ? 'md:col-span-2' : ''}`}>
+                                                <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mb-6 shadow-sm">
+                                                    <span className="text-2xl font-black text-zinc-900">0{idx + 1}</span>
+                                                </div>
+                                                <h3 className="text-xl font-bold text-zinc-900 mb-3 tracking-tight">{rec.title}</h3>
+                                                <p className="text-zinc-600 leading-relaxed font-medium text-lg lg:max-w-2xl">{rec.description}</p>
                                             </div>
-                                            <h3 className="text-xl font-bold text-zinc-900 mb-3 tracking-tight">Marketing Re-investment</h3>
-                                            <p className="text-zinc-600 leading-relaxed font-medium text-lg">We strongly advise allocating surplus funds toward the upcoming seasonal marketing push. The data indicates a consistent ROI jump during these seasonal cycles.</p>
-                                        </div>
-                                        <div className="bg-zinc-50 p-8 rounded-[32px] border border-zinc-100 relative overflow-hidden">
-                                            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mb-6 shadow-sm">
-                                                <span className="text-2xl font-black text-zinc-900">02</span>
-                                            </div>
-                                            <h3 className="text-xl font-bold text-zinc-900 mb-3 tracking-tight">Operational Streamlining</h3>
-                                            <p className="text-zinc-600 leading-relaxed font-medium text-lg">Continue optimizing vendor contract cycles. Historical data suggests renegotiating the core infrastructure tier could yield an additional 4% margin improvement.</p>
-                                        </div>
-                                        <div className="bg-zinc-50 p-8 rounded-[32px] border border-zinc-100 md:col-span-2 relative overflow-hidden">
-                                            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mb-6 shadow-sm">
-                                                <span className="text-2xl font-black text-zinc-900">03</span>
-                                            </div>
-                                            <h3 className="text-xl font-bold text-zinc-900 mb-3 tracking-tight">Cashflow Precaution</h3>
-                                            <p className="text-zinc-600 leading-relaxed font-medium text-lg lg:max-w-2xl">Despite strong overall performance, ensure liquid reserves remain at a minimum 3-month runway to buffer against the mild projection dip expected in May.</p>
-                                        </div>
+                                        )) : (
+                                            <div className="col-span-1 text-zinc-500 font-bold p-8">No recommendations generated yet.</div>
+                                        )}
                                     </div>
                                 </section>
 
@@ -215,7 +225,7 @@ export const Analytics: React.FC = () => {
                                         </div>
                                         <h2 className="text-3xl font-bold tracking-tight mb-6">Immediate Next Steps</h2>
                                         <p className="text-xl leading-relaxed text-zinc-300 font-medium mb-8 lg:max-w-3xl relative z-10">
-                                            Convene with department leads by Friday to review these action items and initiate the budget transfer for the marketing push. Our predictive models suggest acting within this window maximizes return potential by <span className="text-white font-bold underline decoration-violet-500 underline-offset-8">22%</span> compared to waiting for the next quarter.
+                                            {strategy?.nextSteps || "No next steps available."}
                                         </p>
                                         <div className="flex flex-wrap gap-4 relative z-10">
                                             <button className="px-8 py-4 bg-white text-zinc-900 font-bold rounded-2xl hover:bg-zinc-200 transition-colors">

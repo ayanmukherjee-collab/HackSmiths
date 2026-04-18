@@ -1,0 +1,81 @@
+{
+  "availableYears": [
+    "2021"
+  ],
+  "graphs": [
+    {
+      "year": "2021",
+      "chartType": "bar",
+      "title": "Profit Margin (Net Profit %) - FY 2021",
+      "dataKey1": "npPct",
+      "data": [
+        {
+          "name": "Shri Sharma Traders",
+          "industry": "Rajasthan",
+          "month": "FMCG Trading",
+          "npPct": 11.75
+        },
+        {
+          "name": "M/s Gupta Hardware",
+          "industry": "Odisha",
+          "month": "FMCG Trading",
+          "npPct": 10.87
+        },
+        {
+          "name": "M/s Singh Enterprises",
+          "industry": "Rajasthan",
+          "month": "FMCG Trading",
+          "npPct": 3.71
+        },
+        {
+          "name": "Shri Patel Trading Co.",
+          "industry": "Maharashtra",
+          "month": "Hardware & Tools",
+          "npPct": 4.56
+        },
+        {
+          "name": "Shri Yadav Steel",
+          "industry": "Jharkhand",
+          "month": "Timber & Wood",
+          "npPct": 11.66
+        },
+        {
+          "name": "M/s Kumar Hardware",
+          "industry": "West Bengal",
+          "month": "Agri Inputs",
+          "npPct": 3.76
+        },
+        {
+          "name": "Shri Mishra Stores",
+          "industry": "Maharashtra",
+          "month": "Plumbing & Sanitary",
+          "npPct": 7.75
+        },
+        {
+          "name": "Sri Jha Suppliers",
+          "industry": "Rajasthan",
+          "month": "Cement & Building Mat.",
+          "npPct": 13.8
+        },
+        {
+          "name": "Sri Verma & Sons",
+          "industry": "Madhya Pradesh",
+          "month": "Cement & Building Mat.",
+          "npPct": 10.76
+        },
+        {
+          "name": "M/s Tiwari Industries",
+          "industry": "Chhattisgarh",
+          "month": "Cement & Building Mat.",
+          "npPct": 10.45
+        },
+        {
+          "name": "Shri Dubey Trading",
+          "industry": "West Bengal",
+          "month": "Agri Inputs",
+          "npPct": 7.86
+        }
+      ]
+    }
+  ]
+}

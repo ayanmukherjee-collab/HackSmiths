@@ -10,34 +10,39 @@ interface Metric {
     icon: React.ReactNode;
 }
 
-export const MetricsGrid: React.FC = () => {
+export const MetricsGrid: React.FC<{ healthData: any }> = ({ healthData }) => {
+    const agg = healthData?.aggregates;
+    const years = healthData?.yearBreakdown || [];
+    const latestYear = years.length > 0 ? years[years.length - 1] : null;
+    const prevYear = years.length > 1 ? years[years.length - 2] : null;
+
     const metrics: Metric[] = [
         {
             label: 'Liquidity Ratio',
-            value: '0',
-            sub: '0',
-            isPositive: false,
+            value: agg?.avgCurrentRatio?.toFixed(2) || '0',
+            sub: prevYear ? `${prevYear.year} avg` : '0',
+            isPositive: (agg?.avgCurrentRatio || 0) >= 1.5,
             icon: <Wallet size={18} fill="currentColor" strokeWidth={0} />,
         },
         {
             label: 'Expense Ratio',
-            value: '0%',
-            sub: '0%',
-            isPositive: false,
+            value: agg?.avgDebtEquityRatio?.toFixed(2) || '0',
+            sub: prevYear ? `${prevYear.year} avg` : '0%',
+            isPositive: (agg?.avgDebtEquityRatio || 0) < 1.0,
             icon: <Receipt size={18} fill="currentColor" strokeWidth={0} />,
         },
         {
             label: 'Profitability',
-            value: '0%',
-            sub: '0%',
-            isPositive: true,
+            value: agg ? `${agg.avgNpPct?.toFixed(1)}%` : '0%',
+            sub: latestYear ? `FY ${latestYear.year}` : '0%',
+            isPositive: (agg?.avgNpPct || 0) > 5,
             icon: <LineChart size={20} strokeWidth={2.5} />,
         },
         {
             label: 'Compliance',
-            value: '0%',
-            sub: '0',
-            isPositive: true,
+            value: agg ? `${Math.round(agg.complianceRate)}%` : '0%',
+            sub: agg ? `${agg.goodCount} Good` : '-',
+            isPositive: (agg?.complianceRate || 0) >= 70,
             icon: <FileCheck size={20} strokeWidth={2.5} />,
         },
     ];

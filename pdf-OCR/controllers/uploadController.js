@@ -51,6 +51,12 @@ const uploadFile = (req, res) => {
         // Immediately auto-extract text using pdf-parse so it caches as a .txt for later API efficiency
         try {
             await ocrHelper.extractTextFromPDF(req.file.path);
+            const { generateGraphData } = require('../utils/generate_graph');
+            generateGraphData();
+            const { generateHealthData } = require('../utils/generate_health');
+            generateHealthData();
+            const { generateAnalyticsData } = require('../utils/generate_analytics');
+            generateAnalyticsData();
         } catch (e) {
             console.error("Background extraction error:", e);
         }

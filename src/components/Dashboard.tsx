@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar, Download } from 'lucide-react';
 import { ScoreCard } from './ScoreCard';
 import { MetricsGrid } from './MetricsGrid';
@@ -9,11 +9,40 @@ import { AnomalyTable } from './AnomalyTable';
 import { UploadWidget } from './UploadWidget';
 
 interface DashboardProps {
+    activeFileId: string | null;
     onUpload: (file: File) => void;
     onNavigateToAnalytics?: () => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ onUpload, onNavigateToAnalytics }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ activeFileId, onUpload, onNavigateToAnalytics }) => {
+    const [healthData, setHealthData] = useState<any>(null);
+
+    // Fetch aggregate health score from all uploaded files
+    const fetchHealthScore = () => {
+        fetch('http://localhost:5001/api/health-score')
+            .then(res => res.json())
+            .then(res => {
+                if (res.success && res.data) {
+                    setHealthData(res.data);
+                }
+            })
+            .catch(err => console.error("Failed to fetch health score", err));
+    };
+
+    useEffect(() => {
+        fetchHealthScore();
+    }, []);
+
+    useEffect(() => {
+        if (activeFileId) {
+            fetch(`http://localhost:5001/api/parsed/${activeFileId}`)
+                .then(res => res.json())
+                .catch(err => console.error("Failed to fetch parsed data", err));
+            // Refresh health score when a new file is selected (after upload)
+            fetchHealthScore();
+        }
+    }, [activeFileId]);
+
     return (
         <div className="pt-2 lg:pt-6 pb-24 max-w-[1400px] mx-auto">
 
@@ -47,11 +76,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUpload, onNavigateToAnal
 
                 {/* Row 1: Top Metrics */}
                 <div className="col-span-1 lg:col-span-2 xl:col-span-1 flex">
-                    <ScoreCard score={0} />
+                    <ScoreCard
+                        score={healthData?.overallScore || 0}
+                        status={healthData?.overallRiskLabel || null}
+                        totalCompanies={healthData?.totalCompanies || 0}
+                    />
                 </div>
 
                 <div className="col-span-1 lg:col-span-2 xl:col-span-2 flex">
-                    <MetricsGrid />
+                    <MetricsGrid healthData={healthData} />
                 </div>
 
                 <div className="col-span-1 lg:col-span-2 xl:col-span-1 flex">
@@ -60,7 +93,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUpload, onNavigateToAnal
 
                 {/* Row 2: Charts and Insights */}
                 <div className="col-span-1 md:col-span-2 lg:col-span-2 xl:col-span-2 flex">
-                    <MarginChart />
+                    <MarginChart activeFileId={activeFileId} />
                 </div>
 
                 <div className="col-span-1 md:col-span-2 lg:col-span-1 xl:col-span-1 flex w-full">
@@ -73,7 +106,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onUpload, onNavigateToAnal
 
                 {/* Row 3: Bottom Table */}
                 <div className="col-span-1 md:col-span-2 lg:col-span-4 xl:col-span-4 mt-2">
-                    <AnomalyTable />
+                    <AnomalyTable anomalies={healthData?.anomalies || []} />
                 </div>
 
             </div>

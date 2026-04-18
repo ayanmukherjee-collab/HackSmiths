@@ -39,8 +39,8 @@ const App: React.FC = () => {
 
     return (
         <Layout activeTab={activeTab} onTabChange={setActiveTab}>
-            {state === 'DASHBOARD' && activeTab === 'dashboard' && <Dashboard onUpload={handleUpload} onNavigateToAnalytics={() => setActiveTab('analytics')} />}
-            {state === 'DASHBOARD' && activeTab === 'analytics' && <Analytics />}
+            {state === 'DASHBOARD' && activeTab === 'dashboard' && <Dashboard activeFileId={activeFileId} onUpload={handleUpload} onNavigateToAnalytics={() => setActiveTab('analytics')} />}
+            {state === 'DASHBOARD' && activeTab === 'analytics' && <Analytics activeFileId={activeFileId} />}
             {state === 'DASHBOARD' && activeTab === 'documents' && <DocumentCenter onUpload={handleUpload} />}
             {state === 'DASHBOARD' && activeTab === 'profile' && <Profile />}
             {state === 'LOADING' && <LoadingView />}
