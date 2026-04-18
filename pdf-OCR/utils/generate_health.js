@@ -12,15 +12,14 @@ function generateHealthData() {
     const files = fs.readdirSync(uploadsDir);
     const txtFiles = files.filter(f => f.endsWith('.txt'));
 
-    const allCompanies = [];   // flat list of every company row across all files
-    const yearSummaries = {};  // { "2021": { count, totalScore, ... }, ... }
+    const allCompanies = [];
+    const yearSummaries = {};
 
     for (const file of txtFiles) {
         const filePath = path.join(uploadsDir, file);
         const content = fs.readFileSync(filePath, 'utf-8');
         const lines = content.split('\n').map(l => l.trim()).filter(l => l);
 
-        // --- Detect year ---
         let detectedYear = 'Unknown';
         for (const line of lines) {
             const yearMatch = line.match(/sme financial health\s+(\d{4})/i);
@@ -30,12 +29,10 @@ function generateHealthData() {
             }
         }
 
-        // --- Extract company names ---
         const companyNames = [];
         const states = [];
         const sectors = [];
 
-        // --- Financial fields per company (parallel arrays) ---
         const npPcts = [];
         const currentRatios = [];
         const debtEquityRatios = [];
@@ -43,46 +40,38 @@ function generateHealthData() {
         const healthScores = [];
         const riskLabels = [];
 
-        let section = '';  // track which section we're parsing
+        let section = '';
 
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
 
-            // Skip page markers and headers
             if (line.startsWith('Page ') || line.toLowerCase().startsWith('sme financial health')) {
                 section = '';
                 continue;
             }
 
-            // --- Section: Company names ---
             if (line.includes('Business ID') && line.includes('Business Name')) {
                 section = 'companies';
                 continue;
             }
 
-            // --- Section: NP Pct ---
             if (line.includes('NP Pct') && (line.includes('Net Profit K') || line.includes('Opening Stock K') || line.includes('Loading Unloading K'))) {
-                // NP Pct header can appear in two different page layouts
                 const headers = line.split(/\s{2,}/);
                 section = 'npPct';
-                // Find the column index of NP Pct
                 section = 'npPct_idx_' + headers.findIndex(h => h.trim() === 'NP Pct');
                 continue;
             }
 
-            // --- Section: Owner Capital / Current Ratio / Debt Equity ---
             if (line.includes('Owner Capital K') && line.includes('Current Ratio')) {
                 section = 'ratios';
                 continue;
             }
 
-            // --- Section: Financial Health Score ---
             if (line.includes('Financial Health Score')) {
                 section = 'healthScore';
                 continue;
             }
 
-            // Skip other header rows
             if (line.includes('Gross Sales K') || line.includes('Loading Unloading K') ||
                 line.includes('Opening Stock K') || line.includes('Sundry Debtors K') ||
                 line.includes('Shop Rent K') || line.includes('Net Profit K') ||
@@ -94,7 +83,6 @@ function generateHealthData() {
                 continue;
             }
 
-            // --- Parse company rows ---
             if (section === 'companies') {
                 const parts = line.split(/\s{2,}/);
                 if (parts.length >= 3) {
@@ -104,7 +92,6 @@ function generateHealthData() {
                 }
             }
 
-            // --- Parse NP Pct rows ---
             if (section.startsWith('npPct_idx_')) {
                 const colIdx = parseInt(section.replace('npPct_idx_', ''), 10);
                 const parts = line.split(/\s{2,}|\s+/).filter(p => p.trim() !== '');
@@ -114,10 +101,8 @@ function generateHealthData() {
                 }
             }
 
-            // --- Parse Current Ratio / Debt Equity / ROCE rows ---
             if (section === 'ratios') {
                 const parts = line.split(/\s{2,}|\s+/).filter(p => p.trim() !== '');
-                // Expected order: Owner Capital K, Working Capital K, Current Ratio, Debt Equity Ratio, ICR, ROCE Pct, [Total Asset K]
                 if (parts.length >= 6) {
                     const cr = parseFloat(parts[2]);
                     const de = parseFloat(parts[3]);
@@ -128,11 +113,8 @@ function generateHealthData() {
                 }
             }
 
-            // --- Parse Health Score / Risk Label rows ---
             if (section === 'healthScore') {
-                // Lines look like: "1000   100Good" or "1500   61Medium" or with Total Assets: "7703   1000   100Good"
                 const parts = line.split(/\s{2,}|\s+/).filter(p => p.trim() !== '');
-                // Find the part that contains the score+label (e.g. "100Good", "66Medium")
                 const lastPart = parts[parts.length - 1];
                 const scoreMatch = lastPart.match(/^(\d+)(Good|Medium|Poor|Bad)$/i);
                 if (scoreMatch) {
@@ -142,7 +124,6 @@ function generateHealthData() {
             }
         }
 
-        // --- Build company records ---
         const count = Math.min(
             companyNames.length,
             healthScores.length || Infinity,
@@ -167,7 +148,6 @@ function generateHealthData() {
             allCompanies.push(company);
         }
 
-        // Year-level summary
         if (!yearSummaries[detectedYear]) {
             yearSummaries[detectedYear] = { count: 0, totalScore: 0, goodCount: 0 };
         }
@@ -183,7 +163,6 @@ function generateHealthData() {
         }
     }
 
-    // --- Aggregate calculations ---
     const validScores = allCompanies.filter(c => c.healthScore != null);
     const validCR = allCompanies.filter(c => c.currentRatio != null);
     const validDE = allCompanies.filter(c => c.debtEquityRatio != null);
@@ -198,10 +177,8 @@ function generateHealthData() {
 
     const round2 = (v) => Math.round(v * 100) / 100;
 
-    // --- Anomaly Derivation ---
     const rawAnomalies = [];
     allCompanies.forEach((company, idx) => {
-        // High Risk / Poor or Bad rating
         if (company.riskLabel && (company.riskLabel.toLowerCase() === 'poor' || company.riskLabel.toLowerCase() === 'bad')) {
             rawAnomalies.push({
                 id: company.name,
@@ -211,7 +188,6 @@ function generateHealthData() {
                 severity: 'HIGH'
             });
         }
-        // Liquidity Crisis
         else if (company.currentRatio != null && company.currentRatio < 1.0) {
             rawAnomalies.push({
                 id: company.name,
@@ -221,7 +197,6 @@ function generateHealthData() {
                 severity: 'HIGH'
             });
         }
-        // Heavy Leverage
         else if (company.debtEquityRatio != null && company.debtEquityRatio > 1.5) {
             rawAnomalies.push({
                 id: company.name,
@@ -231,7 +206,6 @@ function generateHealthData() {
                 severity: 'MEDIUM'
             });
         }
-        // Sub-optimal Margins
         else if (company.npPct != null && company.npPct < 5.0 && company.npPct > 0) {
             rawAnomalies.push({
                 id: company.name,
@@ -241,7 +215,6 @@ function generateHealthData() {
                 severity: 'LOW'
             });
         }
-        // Negative Margins
         else if (company.npPct != null && company.npPct <= 0) {
             rawAnomalies.push({
                 id: company.name,
@@ -253,7 +226,6 @@ function generateHealthData() {
         }
     });
 
-    // Take top 8 anomalies prioritizing severity
     const severityWeight = { 'HIGH': 3, 'MEDIUM': 2, 'LOW': 1 };
     const anomalies = rawAnomalies
         .sort((a, b) => severityWeight[b.severity] - severityWeight[a.severity])

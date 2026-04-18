@@ -1,0 +1,7 @@
+{
+  "companies": [],
+  "warning": "Failed to parse data using LLM: Failed to parse LLM response as JSON: Unexpected token 'H', \"Here's the\"... is not valid JSON",
+  "summary": {
+    "totalCompanies": 0
+  }
+}

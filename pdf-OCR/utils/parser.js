@@ -41,7 +41,6 @@ You MUST always return valid JSON conforming EXACTLY to this schema:
     try {
         const result = await callLLM(systemPrompt, userPrompt, true);
 
-        // Ensure structure exists
         if (!result.companies) result.companies = [];
         if (!result.summary) {
             result.summary = { totalCompanies: result.companies.length };

@@ -48,7 +48,6 @@ const uploadFile = (req, res) => {
 
         const fileId = path.parse(req.file.filename).name;
 
-        // Immediately auto-extract text using pdf-parse so it caches as a .txt for later API efficiency
         try {
             await ocrHelper.extractTextFromPDF(req.file.path);
             const { generateGraphData } = require('../utils/generate_graph');

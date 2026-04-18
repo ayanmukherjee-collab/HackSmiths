@@ -12,7 +12,7 @@ async function callLLM(systemPrompt, userPrompt, isJsonResponse = false) {
             "Content-Type": "application/json"
         },
         body: JSON.stringify({
-            model: "deepseek/deepseek-chat", // Deepseek v3 via OpenRouter is usually deepseek/deepseek-chat
+            model: "deepseek/deepseek-chat",
             messages: [
                 { role: "system", content: systemPrompt },
                 { role: "user", content: userPrompt }
@@ -31,7 +31,6 @@ async function callLLM(systemPrompt, userPrompt, isJsonResponse = false) {
 
     if (isJsonResponse) {
         try {
-            // Strip markdown formatting if the LLM returned it
             const cleanContent = content.replace(/```json/gi, "").replace(/```/gi, "").trim();
             return JSON.parse(cleanContent);
         } catch (e) {

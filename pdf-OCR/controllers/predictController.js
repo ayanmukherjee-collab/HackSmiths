@@ -16,7 +16,6 @@ const getPredictions = async (req, res) => {
             return res.status(404).json({ success: false, message: 'File not found' });
         }
 
-        // Return cached strategy document if available
         if (fs.existsSync(strategyCachePath)) {
             return res.status(200).json({
                 success: true,
@@ -25,7 +24,6 @@ const getPredictions = async (req, res) => {
             });
         }
 
-        // 1. Get Text
         const tesseractTxtPath = path.join(uploadDir, `${fileId}.txt`);
         let text;
         if (fs.existsSync(tesseractTxtPath)) {
@@ -38,7 +36,6 @@ const getPredictions = async (req, res) => {
             }
         }
 
-        // 2. Get Parsed Data
         let parsedData;
         if (fs.existsSync(parsedCachePath)) {
             parsedData = JSON.parse(fs.readFileSync(parsedCachePath, 'utf8'));
@@ -47,7 +44,6 @@ const getPredictions = async (req, res) => {
             fs.writeFileSync(parsedCachePath, JSON.stringify(parsedData, null, 2), 'utf8');
         }
 
-        // 3. Generate Strategy via LLM
         const systemPrompt = `You are a Chief Financial Officer AI. Review the provided SME financial health dataset and generate an overarching executive summary strategy document, identifying top-level insights, key recommendations, and next steps for the portfolio of companies.
 
 You MUST return a JSON object exactly matching this schema:
@@ -67,7 +63,6 @@ You MUST return a JSON object exactly matching this schema:
 
         const strategyDataOutput = await callLLM(systemPrompt, userPrompt, true);
 
-        // Cache the strategy document
         fs.writeFileSync(strategyCachePath, JSON.stringify(strategyDataOutput, null, 2), 'utf8');
 
         return res.status(200).json({

@@ -16,9 +16,6 @@ function generateAnalyticsData() {
     const files = fs.readdirSync(uploadsDir);
     const txtFiles = files.filter(f => f.endsWith('.txt'));
 
-    // We will aggregate values per month.
-    // cashflow: inflow vs outflow
-    // projection: actual vs projection
     const monthlyData = {};
 
     MONTH_ORDER.forEach(m => {
@@ -54,13 +51,11 @@ function generateAnalyticsData() {
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
 
-            // Skip page markers
             if (line.startsWith('Page ') || line.toLowerCase().startsWith('sme financial health')) {
                 section = '';
                 continue;
             }
 
-            // Headers
             if (line.includes('Business ID') && line.includes('Business Name')) {
                 section = 'companies';
                 continue;
@@ -77,13 +72,11 @@ function generateAnalyticsData() {
                 continue;
             }
 
-            // Other headers resets section
             if (line.includes('Opening Stock K') || line.includes('Sundry Debtors K') || line.includes('Owner Capital K') || line.includes('CC Limit Sanctioned K')) {
                 section = '';
                 continue;
             }
 
-            // --- Parse rows ---
             if (section === 'companies') {
                 const parts = line.split(/\s{2,}/);
                 const monthCandidate = parts[parts.length - 1];
@@ -141,7 +134,6 @@ function generateAnalyticsData() {
         return Math.max(arr1.length, arr2.length) > 0 ? Math.max(arr1.length, arr2.length) : Infinity;
     }
 
-    // Format for charts
     const cashflowArray = [];
     const projectionArray = [];
     const PROJECTION_MODIFIER = 1.12;

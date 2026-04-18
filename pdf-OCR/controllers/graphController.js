@@ -16,7 +16,6 @@ const getGraphData = async (req, res) => {
       return res.status(404).json({ success: false, message: 'File not found' });
     }
 
-    // Return cached graphs directly if available
     if (fs.existsSync(graphsCachePath)) {
       return res.status(200).json({
         success: true,
@@ -25,7 +24,6 @@ const getGraphData = async (req, res) => {
       });
     }
 
-    // Return shared graph.json if LLM cache isn't ready yet
     const sharedGraphPath = path.join(uploadDir, 'graph.json');
     if (fs.existsSync(sharedGraphPath)) {
       return res.status(200).json({
@@ -35,7 +33,6 @@ const getGraphData = async (req, res) => {
       });
     }
 
-    // 1. Get Text
     const tesseractTxtPath = path.join(uploadDir, `${fileId}.txt`);
     let text;
     if (fs.existsSync(tesseractTxtPath)) {
@@ -48,7 +45,6 @@ const getGraphData = async (req, res) => {
       }
     }
 
-    // 2. Get Parsed Data
     let parsedData;
     if (fs.existsSync(parsedCachePath)) {
       parsedData = JSON.parse(fs.readFileSync(parsedCachePath, 'utf8'));
@@ -57,7 +53,6 @@ const getGraphData = async (req, res) => {
       fs.writeFileSync(parsedCachePath, JSON.stringify(parsedData, null, 2), 'utf8');
     }
 
-    // 3. Generate Charts via LLM
     const systemPrompt = `You are a financial data visualization expert. Your task is to analyze structured financial data and generate datasets ready for charting libraries (like Recharts).
 
 Based on the provided SME financial health data, generate insightful graph data.
@@ -90,7 +85,6 @@ Create at least 3 distinct, valuable charts using the raw tabular data. Identify
 
     const graphDataOutput = await callLLM(systemPrompt, userPrompt, true);
 
-    // Cache the graphs
     fs.writeFileSync(graphsCachePath, JSON.stringify(graphDataOutput, null, 2), 'utf8');
 
     return res.status(200).json({

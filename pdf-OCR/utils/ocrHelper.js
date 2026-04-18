@@ -10,7 +10,6 @@ function render_page(pageData) {
             width: item.width
         }));
 
-        // Sort items by Y (top to bottom) first, then by X (left to right)
         items.sort((a, b) => {
             if (Math.abs(a.y - b.y) > 2) return b.y - a.y;
             return a.x - b.x;
@@ -26,7 +25,7 @@ function render_page(pageData) {
             } else {
                 let gap = item.x - lastX;
                 if (gap > 5) {
-                    text += '   '; // add space for table column separation
+                    text += '   ';
                 }
                 text += item.str;
             }
@@ -42,13 +41,11 @@ async function extractTextFromPDF(filePath) {
         const dataBuffer = fs.readFileSync(filePath);
 
         console.log('Extracting text directly using pdf-parse...');
-        // pdf-parse natively using custom pagerender to preserve spatial tabular layouts
         const data = await pdfParse(dataBuffer, { pagerender: render_page });
 
         const combinedText = data.text;
         const pageCount = data.numpages;
 
-        // Cache the extracted text for parsing to avoid re-running
         const textCachePath = `${filePath}.txt`;
         fs.writeFileSync(textCachePath, combinedText, 'utf8');
 
@@ -59,7 +56,6 @@ async function extractTextFromPDF(filePath) {
     }
 }
 
-// Function to get cached text if needed
 function getCachedText(filePath) {
     const textCachePath = `${filePath}.txt`;
     if (fs.existsSync(textCachePath)) {

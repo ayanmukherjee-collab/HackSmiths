@@ -5,7 +5,6 @@ const path = require('path');
 
 const uploadDir = path.join(__dirname, '../uploads');
 
-// GET /api/files - List all parsed documents
 router.get('/', (req, res) => {
     try {
         if (!fs.existsSync(uploadDir)) {
@@ -19,7 +18,6 @@ router.get('/', (req, res) => {
             const filePath = path.join(uploadDir, file);
             const stats = fs.statSync(filePath);
 
-            // Format size
             const sizeInBytes = stats.size;
             const sizeInMB = (sizeInBytes / (1024 * 1024)).toFixed(2);
             let formattedSize = `${sizeInMB} MB`;
@@ -27,7 +25,6 @@ router.get('/', (req, res) => {
                 formattedSize = `${(sizeInBytes / 1024).toFixed(0)} KB`;
             }
 
-            // Format date (e.g. "Oct 24, 2023")
             const date = new Date(stats.mtime);
             const formattedDate = date.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
 
@@ -38,11 +35,10 @@ router.get('/', (req, res) => {
                 name: file,
                 size: formattedSize,
                 date: formattedDate,
-                status: 'parsed', // Assuming parsed if text extraction completes. Can check if .txt exists for finer status.
+                status: 'parsed',
             };
         });
 
-        // Sort by newest first
         fileData.sort((a, b) => new Date(b.date) - new Date(a.date));
 
         return res.status(200).json({
@@ -55,11 +51,9 @@ router.get('/', (req, res) => {
     }
 });
 
-// DELETE /api/files/:id - Delete a document and its data
 router.delete('/:id', (req, res) => {
     try {
         const fileId = req.params.id;
-        // Basic sanitization
         if (!fileId || fileId.includes('..') || fileId.includes('/')) {
             return res.status(400).json({ success: false, message: 'Invalid file ID' });
         }
@@ -82,7 +76,6 @@ router.delete('/:id', (req, res) => {
         }
 
         if (deleted) {
-            // Re-run global aggregates if anything was deleted
             try {
                 const { generateGraphData } = require('../utils/generate_graph');
                 generateGraphData();

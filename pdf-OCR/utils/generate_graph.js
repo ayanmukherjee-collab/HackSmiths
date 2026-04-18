@@ -7,7 +7,6 @@ function generateGraphData() {
     const files = fs.readdirSync(uploadsDir);
     const txtFiles = files.filter(f => f.endsWith('.txt'));
 
-    // Group data by year: { "2021": [...], "2023": [...] }
     const yearData = {};
 
     for (const file of txtFiles) {
@@ -16,7 +15,6 @@ function generateGraphData() {
 
         const lines = content.split('\n').map(l => l.trim()).filter(l => l);
 
-        // Detect year from "sme financial health YYYY" header
         let detectedYear = 'Unknown';
         for (const line of lines) {
             const yearMatch = line.match(/sme financial health\s+(\d{4})/i);
@@ -28,10 +26,10 @@ function generateGraphData() {
 
         const companyNames = [];
         const profitMargins = [];
-        const months = []; // Add array to store months
-        const industries = []; // Add array to store industries
+        const months = [];
+        const industries = [];
 
-        let section = 0; // 0 = default, 1 = companies, 2 = NP Pct section
+        let section = 0;
         let npPctColumnIndex = -1;
 
         for (let i = 0; i < lines.length; i++) {
@@ -43,13 +41,11 @@ function generateGraphData() {
                 continue;
             }
 
-            // Detect company names section
             if (line.includes('Business ID') && line.includes('Business Name')) {
                 section = 1;
                 continue;
             }
 
-            // Detect any header row that contains NP Pct
             if (line.includes('NP Pct')) {
                 section = 2;
                 const headers = line.split(/\s{2,}/);
@@ -57,7 +53,6 @@ function generateGraphData() {
                 continue;
             }
 
-            // Skip other header rows
             if (line.includes('Gross Sales K') || line.includes('Loading Unloading K') ||
                 line.includes('Opening Stock K') || line.includes('Sundry Debtors K') ||
                 line.includes('Owner Capital K') || line.includes('CC Limit Sanctioned K') ||
@@ -71,9 +66,7 @@ function generateGraphData() {
                 const parts = line.split(/\s{2,}/);
                 if (parts.length >= 2) {
                     companyNames.push(parts[1]);
-                    // The last part of the row is the month (e.g. "January")
                     months.push(parts[parts.length - 1]);
-                    // The second to last part is the Sector/Industry (e.g. "FMCG Trading")
                     industries.push(parts.length >= 4 ? parts[parts.length - 2] : "Unknown");
                 }
             } else if (section === 2 && npPctColumnIndex >= 0) {
@@ -105,7 +98,6 @@ function generateGraphData() {
         }
     }
 
-    // Build year-wise graph structure
     const sortedYears = Object.keys(yearData).sort();
     const graphs = sortedYears.map(year => ({
         year,
