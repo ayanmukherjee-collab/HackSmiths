@@ -1,278 +1,132 @@
 const fs = require('fs');
 const path = require('path');
+const { parseTextFile, parseIndianNumber } = require('../controllers/graphController');
 
 const uploadsDir = path.join(__dirname, '../uploads');
 
-const MONTH_ORDER = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
-];
-
-const MONTH_SET = new Set(MONTH_ORDER);
-
-/**
- * Parses all .pdf.txt files in uploads/ and aggregates cashflow and projection data.
- * Handles different table layouts across financial year formats by dynamically
- * mapping columns based on header names.
- * Writes the result to uploads/analytics.json.
- */
 function generateAnalyticsData() {
     const files = fs.readdirSync(uploadsDir);
     const txtFiles = files.filter(f => f.endsWith('.txt'));
 
-    const monthlyData = {};
-    MONTH_ORDER.forEach(m => {
-        monthlyData[m] = { inflow: 0, outflow: 0, actual: 0 };
-    });
-
-    let totalSalaries = 0;
-    let totalShopRents = 0;
-    let totalLoadingUnloading = 0;
-    let totalInterests = 0;
-    let totalMiscs = 0;
+    const allPeriods = [];
+    let opex = { interest: 0, opExpenses: 0, depreciation: 0, tax: 0, other: 0 };
+    let unit = 'K'; // K for SME (thousands), Cr for corporate (crores)
 
     for (const file of txtFiles) {
-        const filePath = path.join(uploadsDir, file);
-        const content = fs.readFileSync(filePath, 'utf-8');
-        const lines = content.split('\n').map(l => l.trim()).filter(l => l);
+        const content = fs.readFileSync(path.join(uploadsDir, file), 'utf-8');
+        const parsed = parseTextFile(content);
 
-        // Per-file accumulators
-        const months = [];
-        const grossSales = [];
-        const purchases = [];
-        const salaries = [];
-        const shopRents = [];
-        const loadingUnloadings = [];
-        const miscs = [];
-        const interests = [];
-
-        let section = '';
-        let currentHeaders = [];
-
-        for (let i = 0; i < lines.length; i++) {
-            const line = lines[i];
-
-            // Skip page markers and title lines
-            if (line.startsWith('Page ') || line.toLowerCase().startsWith('sme financial health')) {
-                section = '';
-                currentHeaders = [];
-                continue;
+        if (parsed.format === 'corporate') {
+            unit = 'Cr';
+            // Use quarterly data for cashflow + projection
+            for (const row of parsed.monthlyData) {
+                allPeriods.push({
+                    period: row.month,
+                    inflow: row.grossSales,
+                    outflow: row.purchase
+                });
             }
 
-            // Detect companies section (handles both "Business Name" and "Business_Name")
-            if (line.includes('Business ID') && (line.includes('Business Name') || line.includes('Business_Name'))) {
-                section = 'companies';
-                currentHeaders = line.split(/\s{2,}/);
-                continue;
-            }
+            // For opex, use ONLY the latest quarter (not sum of all)
+            const lines = content.split('\n').map(l => l.trim()).filter(l => l);
+            let inQR = false;
+            let colCount = 0;
 
-            // Detect any financial data section by looking for known column headers
-            if (line.includes('Gross Sales K') || line.includes('Loading Unloading K') ||
-                line.includes('Shop Rent K') || line.includes('NP Pct') ||
-                line.includes('Opening Stock K') || line.includes('Sundry Debtors K') ||
-                line.includes('Owner Capital K') || line.includes('CC Limit Sanctioned K') ||
-                line.includes('Total Assets K') || line.includes('Total Asset K')) {
+            for (const line of lines) {
+                if (line === 'Quarterly Results') { inQR = true; continue; }
+                if (line === 'Profit & Loss' || line === 'Balance Sheet') { inQR = false; continue; }
+                if (!inQR) continue;
 
-                currentHeaders = line.split(/\s{2,}/);
-
-                // Determine which section this is based on what columns are present
-                if (line.includes('Gross Sales K')) {
-                    section = 'sales';
-                } else if (line.includes('Loading Unloading K') || (line.includes('Shop Rent K') && line.includes('Misc Expenses K'))) {
-                    section = 'expenses';
-                } else {
-                    // Other sections we don't need (balance sheet, etc.)
-                    section = 'skip';
+                // Period header to count columns
+                if (/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4}/.test(line)) {
+                    colCount = line.split(/\s{2,}/).filter(p => p.trim()).length;
+                    continue;
                 }
-                continue;
-            }
 
-            // Parse companies section - extract months
-            if (section === 'companies') {
+                // Extract LAST column value for each metric
                 const parts = line.split(/\s{2,}/);
-                const lastPart = parts[parts.length - 1];
-                if (MONTH_SET.has(lastPart)) {
-                    months.push(lastPart);
-                } else if (parts.length >= 5 && MONTH_SET.has(parts[4])) {
-                    months.push(parts[4]);
-                } else {
-                    // Fallback: assign month cyclically
-                    months.push(MONTH_ORDER[months.length % 12]);
-                }
-                continue;
+                if (parts.length < 2) continue;
+                const name = parts[0].replace(/\s*\+$/, '').trim();
+                const lastVal = parseIndianNumber(parts[parts.length - 1]);
+
+                if (name === 'Interest') opex.interest = lastVal;
+                else if (name === 'Expenses') opex.opExpenses = lastVal;
+                else if (name === 'Depreciation') opex.depreciation = lastVal;
+                else if (name.startsWith('Tax')) opex.tax = lastVal; // Tax % row
             }
 
-            // Parse sales section - dynamically map columns by header name
-            if (section === 'sales') {
-                // Check if the first token is a month name (e.g. "January  7981  6465...")
-                const parts = line.split(/\s{2,}/);
-                let monthFromRow = null;
-                let numericStart = 0;
-
-                // Check if the line starts with a month name
-                if (parts.length > 0 && MONTH_SET.has(parts[0])) {
-                    monthFromRow = parts[0];
-                    numericStart = 1;
-                }
-
-                // Extract all numeric values from the row
-                const allParts = line.split(/\s{2,}|\s+/);
-                const numericValues = allParts.filter(p => !isNaN(parseFloat(p)) && p.trim() !== '');
-
-                if (numericValues.length < 2) continue;
-
-                // Build a column map from the headers
-                // Headers may include: "Financial Year XXXX", "Gross Sales K", "Purchase K", "Gross Profit K", "GP Pct", "Staff Salary K", "Shop Rent K"
-                const colMap = {};
-                let dataIdx = 0;
-
-                for (const h of currentHeaders) {
-                    const hNorm = h.trim().toLowerCase();
-                    if (hNorm.includes('financial year') || hNorm === '') continue; // skip non-data headers
-                    if (MONTH_SET.has(h.trim())) continue; // skip month names in headers
-                    colMap[hNorm] = dataIdx;
-                    dataIdx++;
-                }
-
-                const getVal = (key) => {
-                    const idx = colMap[key];
-                    if (idx !== undefined && idx < numericValues.length) {
-                        return parseFloat(numericValues[idx]) || 0;
-                    }
-                    return 0;
-                };
-
-                const gs = getVal('gross sales k');
-                const pur = getVal('purchase k');
-                const sal = getVal('staff salary k');
-                const sr = getVal('shop rent k');
-
-                grossSales.push(gs);
-                purchases.push(pur);
-                salaries.push(sal);
-                shopRents.push(sr);
-
-                // If month was embedded in this data row, add it
-                if (monthFromRow) {
-                    months.push(monthFromRow);
-                }
-
-                continue;
+            // Tax is a percentage, compute actual tax from PBT
+            const latestData = parsed.monthlyData[parsed.monthlyData.length - 1];
+            if (latestData) {
+                // PBT = grossProfit - depreciation + other income ≈ grossProfit
+                // But we can compute: Net Profit = PBT * (1 - tax%), so PBT = NP / (1 - tax/100)
+                // Tax amount = PBT - NP
+                const pbt = latestData.grossProfit; // financing profit isn't exactly PBT but close enough
+                const taxAmount = pbt - latestData.netProfit;
+                opex.tax = Math.max(0, Math.round(taxAmount));
             }
 
-            // Parse expenses section - dynamically map columns by header name
-            if (section === 'expenses') {
-                const numericValues = line.split(/\s{2,}|\s+/).filter(p => !isNaN(parseFloat(p)) && p.trim() !== '');
-                if (numericValues.length < 2) continue;
-
-                // Build column map from headers
-                const colMap = {};
-                let dataIdx = 0;
-
-                for (const h of currentHeaders) {
-                    const hNorm = h.trim().toLowerCase();
-                    if (hNorm === '') continue;
-                    colMap[hNorm] = dataIdx;
-                    dataIdx++;
-                }
-
-                const getVal = (key) => {
-                    const idx = colMap[key];
-                    if (idx !== undefined && idx < numericValues.length) {
-                        return parseFloat(numericValues[idx]) || 0;
-                    }
-                    return 0;
-                };
-
-                // Handle Shop Rent appearing in expenses section (2021 format)
-                const sr = getVal('shop rent k');
-                if (sr > 0 && shopRents.length > 0) {
-                    // If shop rents array already has entries from sales section, update the corresponding one
-                    const expenseIdx = loadingUnloadings.length;
-                    if (expenseIdx < shopRents.length) {
-                        shopRents[expenseIdx] += sr;
-                    }
-                } else if (sr > 0) {
-                    shopRents.push(sr);
-                }
-
-                loadingUnloadings.push(getVal('loading unloading k'));
-                miscs.push(getVal('misc expenses k'));
-
-                // Handle both "Interest on CC K" and "Intrest on CC K" (typo in source data)
-                let interestVal = getVal('interest on cc k') || getVal('intrest on cc k');
-                interests.push(interestVal);
-
-                continue;
+        } else if (parsed.format === 'sme') {
+            unit = 'K';
+            for (const row of parsed.monthlyData) {
+                allPeriods.push({
+                    period: row.month.substring(0, 3),
+                    inflow: row.grossSales,
+                    outflow: row.purchase
+                });
             }
-        }
 
-        // Aggregate data into monthly buckets
-        const count = Math.min(
-            months.length,
-            grossSales.length,
-            Math.max(loadingUnloadings.length, 1)
-        );
+            // SME expense breakdown from raw text
+            const lines = content.split('\n').map(l => l.trim()).filter(l => l);
+            let section = '';
+            for (const line of lines) {
+                if (line.includes('Gross Sales K') && line.includes('Staff Salary K')) { section = 'sales'; continue; }
+                if (line.includes('Shop Rent K') && line.includes('Misc Expenses K')) { section = 'expenses'; continue; }
+                if (line.includes('NP Pct') || line.includes('Business ID')) { section = ''; continue; }
 
-        for (let j = 0; j < count; j++) {
-            const m = months[j];
-            if (!m || !monthlyData[m]) continue;
-
-            const inflow = grossSales[j] || 0;
-            const outflow = (purchases[j] || 0) + (salaries[j] || 0) + (shopRents[j] || 0) +
-                (loadingUnloadings[j] || 0) + (miscs[j] || 0) + (interests[j] || 0);
-
-            monthlyData[m].inflow += inflow;
-            monthlyData[m].outflow += outflow;
-            monthlyData[m].actual += inflow;
-
-            totalSalaries += salaries[j] || 0;
-            totalShopRents += shopRents[j] || 0;
-            totalLoadingUnloading += loadingUnloadings[j] || 0;
-            totalInterests += interests[j] || 0;
-            totalMiscs += miscs[j] || 0;
+                if (section === 'sales') {
+                    const parts = line.split(/\s{2,}/);
+                    if (parts.length >= 6) opex.other += parseFloat(parts[5]) || 0; // Staff salary -> other
+                } else if (section === 'expenses') {
+                    const nums = line.split(/\s+/).map(Number).filter(n => !isNaN(n));
+                    if (nums.length >= 5) {
+                        opex.opExpenses += nums[0] || 0;  // Shop rent
+                        opex.depreciation += nums[1] || 0; // Loading
+                        opex.other += nums[2] || 0;       // Misc
+                        opex.interest += nums[4] || 0;    // Interest
+                    }
+                }
+            }
         }
     }
 
-    // Build output arrays, only months with data
-    const cashflowArray = [];
-    const projectionArray = [];
-    const PROJECTION_MODIFIER = 1.12;
+    // Build output
+    const cashflow = allPeriods.map(d => ({ name: d.period, inflow: Math.round(d.inflow), outflow: Math.round(d.outflow) }));
+    const projection = allPeriods.map(d => ({ month: d.period, actual: Math.round(d.inflow), projection: Math.round(d.inflow * 1.12) }));
 
-    MONTH_ORDER.forEach(m => {
-        const data = monthlyData[m];
-        if (data.inflow > 0 || data.outflow > 0) {
-            cashflowArray.push({
-                name: m.substring(0, 3),
-                inflow: Math.round(data.inflow),
-                outflow: Math.round(data.outflow)
-            });
+    // Build opex breakdown with meaningful labels
+    let opexBreakdown;
+    if (unit === 'Cr') {
+        opexBreakdown = [
+            { name: 'Interest', value: Math.round(opex.interest) },
+            { name: 'Operating Exp', value: Math.round(opex.opExpenses) },
+            { name: 'Depreciation', value: Math.round(opex.depreciation) },
+            { name: 'Tax', value: Math.round(opex.tax) },
+        ].filter(item => item.value > 0);
+    } else {
+        opexBreakdown = [
+            { name: 'Payroll', value: Math.round(opex.other) },
+            { name: 'Rent & Utilities', value: Math.round(opex.opExpenses) },
+            { name: 'Logistics', value: Math.round(opex.depreciation) },
+            { name: 'Interest', value: Math.round(opex.interest) },
+        ].filter(item => item.value > 0);
+    }
 
-            projectionArray.push({
-                month: m.substring(0, 3),
-                actual: Math.round(data.actual),
-                projection: Math.round(data.actual * PROJECTION_MODIFIER)
-            });
-        }
-    });
-
-    const opexBreakdown = [
-        { name: 'Payroll', value: Math.round(totalSalaries) },
-        { name: 'Rent & Utilities', value: Math.round(totalShopRents) },
-        { name: 'Logistics', value: Math.round(totalLoadingUnloading) },
-        { name: 'Interest', value: Math.round(totalInterests) },
-        { name: 'Misc', value: Math.round(totalMiscs) }
-    ];
-
-    const analyticsJson = {
-        cashflow: cashflowArray,
-        projection: projectionArray,
-        opexBreakdown: opexBreakdown
-    };
+    const analyticsJson = { cashflow, projection, opexBreakdown, unit };
 
     const outputPath = path.join(uploadsDir, 'analytics.json');
     fs.writeFileSync(outputPath, JSON.stringify(analyticsJson, null, 2), 'utf-8');
-    console.log(`Generated analytics data: ${cashflowArray.length} months. Output saved to ${outputPath}`);
+    console.log(`Generated analytics data: ${cashflow.length} periods. Output saved to ${outputPath}`);
 
     return analyticsJson;
 }

@@ -1,7 +1,6 @@
 const path = require('path');
 const fs = require('fs');
-const ocrHelper = require('../utils/ocrHelper');
-const parser = require('../utils/parser');
+const { parseTextFile } = require('./graphController');
 const { callLLM } = require('../utils/llmHelper');
 
 const getPredictions = async (req, res) => {
@@ -24,23 +23,22 @@ const getPredictions = async (req, res) => {
             });
         }
 
-        const tesseractTxtPath = path.join(uploadDir, `${fileId}.txt`);
-        let text;
-        if (fs.existsSync(tesseractTxtPath)) {
-            text = fs.readFileSync(tesseractTxtPath, 'utf8');
-        } else {
-            text = ocrHelper.getCachedText(filePath);
-            if (!text) {
-                const result = await ocrHelper.extractTextFromPDF(filePath);
-                text = result.text;
-            }
+        // Read the text file directly — no OCR needed at this point
+        const txtPath = path.join(uploadDir, `${fileId}.pdf.txt`);
+        const altTxtPath = path.join(uploadDir, `${fileId}.txt`);
+        let text = '';
+        if (fs.existsSync(txtPath)) {
+            text = fs.readFileSync(txtPath, 'utf8');
+        } else if (fs.existsSync(altTxtPath)) {
+            text = fs.readFileSync(altTxtPath, 'utf8');
         }
 
+        // Use fast local parser (no AI)
         let parsedData;
         if (fs.existsSync(parsedCachePath)) {
             parsedData = JSON.parse(fs.readFileSync(parsedCachePath, 'utf8'));
         } else {
-            parsedData = await parser.parseFinancialText(text);
+            parsedData = parseTextFile(text);
             fs.writeFileSync(parsedCachePath, JSON.stringify(parsedData, null, 2), 'utf8');
         }
 

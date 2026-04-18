@@ -1,0 +1,26 @@
+{
+  "cashflow": [],
+  "projection": [],
+  "opexBreakdown": [
+    {
+      "name": "Payroll",
+      "value": 0
+    },
+    {
+      "name": "Rent & Utilities",
+      "value": 0
+    },
+    {
+      "name": "Logistics",
+      "value": 0
+    },
+    {
+      "name": "Interest",
+      "value": 0
+    },
+    {
+      "name": "Misc",
+      "value": 0
+    }
+  ]
+}

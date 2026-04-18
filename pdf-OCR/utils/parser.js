@@ -1,5 +1,9 @@
-const { callLLM } = require('./llmHelper');
+const { parseTextFile } = require('../controllers/graphController');
 
+/**
+ * Non-AI parser that directly extracts structured data from OCR text.
+ * Replaces the previous LLM-based parser for instant results.
+ */
 async function parseFinancialText(rawText) {
     if (!rawText || typeof rawText !== 'string' || rawText.trim() === '') {
         return {
@@ -9,56 +13,35 @@ async function parseFinancialText(rawText) {
         };
     }
 
-    const systemPrompt = `You are a financial data extraction assistant. Your job is to extract tabular financial health data of SMEs from parsed PDF text into structured JSON format. 
-The text contains multiple pages. Different columns of metric values for the same companies are spread across different pages, so you must merge the data using the order of appearance or the row index.
+    const parsed = parseTextFile(rawText);
 
-You MUST always return valid JSON conforming EXACTLY to this schema:
-{
-  "companies": [
-    {
-      "businessId": "SME-202021-001",
-      "businessName": "string",
-      "state": "string",
-      "sector": "string",
-      "metrics": {
-         "grossSalesK": number (if available),
-         "netProfitK": number (if available),
-         "workingCapitalK": number (if available),
-         "currentRatio": number (if available),
-         "debtEquityRatio": number (if available),
-         "financialHealthScore": number (if available),
-         "riskLabel": "string"
-      }
-    }
-  ],
-  "summary": {
-    "totalCompanies": number
-  }
-}`;
-
-    const userPrompt = `Extract SME financial health data from the following text and carefully merge properties across pages for each business:\n\n${rawText}`;
-
-    try {
-        const result = await callLLM(systemPrompt, userPrompt, true);
-
-        if (!result.companies) result.companies = [];
-        if (!result.summary) {
-            result.summary = { totalCompanies: result.companies.length };
-        }
-
-        if (result.companies.length === 0 && !result.warning) {
-            result.warning = "No SME financial health data could be identified in the text.";
-        }
-
-        return result;
-    } catch (e) {
-        console.error("LLM Parsing Error:", e);
+    // Map to the expected schema used by predictController & others
+    const companies = parsed.companies.map((c, idx) => {
+        const monthly = parsed.monthlyData[idx] || {};
+        const health = parsed.healthRows[idx] || {};
         return {
-            companies: [],
-            warning: "Failed to parse data using LLM: " + e.message,
-            summary: { totalCompanies: 0 }
+            businessId: c.businessId,
+            businessName: c.name,
+            state: c.state,
+            sector: c.sector,
+            metrics: {
+                grossSalesK: monthly.grossSales || null,
+                netProfitK: monthly.netProfit || null,
+                workingCapitalK: null,
+                currentRatio: null,
+                debtEquityRatio: null,
+                financialHealthScore: health.score || null,
+                riskLabel: health.riskLabel || 'Unknown'
+            }
         };
-    }
+    });
+
+    return {
+        companies,
+        summary: { totalCompanies: companies.length },
+        year: parsed.year,
+        monthlyData: parsed.monthlyData
+    };
 }
 
 module.exports = {
