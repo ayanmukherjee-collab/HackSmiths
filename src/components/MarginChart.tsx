@@ -5,9 +5,10 @@ import {
     XAxis,
     YAxis,
     ResponsiveContainer,
-    Tooltip
+    Tooltip,
+    Legend
 } from 'recharts';
-import { Settings, ChevronDown } from 'lucide-react';
+import { Settings, ChevronDown, BarChart2 } from 'lucide-react';
 
 interface MarginChartProps {
     activeFileId: string | null;
@@ -38,21 +39,11 @@ interface GraphJson {
     graphs: GraphEntry[];
 }
 
-type MetricKey = 'npPct' | 'gpPct' | 'grossSales' | 'netProfit';
-
-const METRICS: { key: MetricKey; label: string; suffix: string; color: string }[] = [
-    { key: 'npPct', label: 'NP %', suffix: '%', color: '#ffffff' },
-    { key: 'gpPct', label: 'GP %', suffix: '%', color: '#4ade80' },
-    { key: 'grossSales', label: 'Revenue', suffix: 'K', color: '#60a5fa' },
-    { key: 'netProfit', label: 'Net Profit', suffix: 'K', color: '#f59e0b' },
-];
-
 export const MarginChart: React.FC<MarginChartProps> = ({ activeFileId }) => {
     const [graphJson, setGraphJson] = useState<GraphJson | null>(null);
     const [selectedYear, setSelectedYear] = useState<string>('');
-    const [activeMetric, setActiveMetric] = useState<MetricKey>('npPct');
+    const [durationLimit, setDurationLimit] = useState(12);
     const [showSettings, setShowSettings] = useState(false);
-    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -66,46 +57,35 @@ export const MarginChart: React.FC<MarginChartProps> = ({ activeFileId }) => {
                 const payload = json?.data || json;
                 if (payload?.availableYears?.length) {
                     setGraphJson(payload);
-                    setSelectedYear(payload.availableYears[payload.availableYears.length - 1]);
+                    setSelectedYear(payload.availableYears[payload.availableYears.length - 1]); // default to latest year
                 } else if (payload?.graphs?.[0]) {
                     const legacy: GraphJson = {
                         availableYears: ['All'],
                         graphs: [{ year: 'All', ...payload.graphs[0] }]
                     };
                     setGraphJson(legacy);
-                    setSelectedYear('All');
+                    setSelectedYears(['All']);
                 }
             })
             .catch(err => console.error('Failed to fetch graph data', err));
     }, [activeFileId]);
 
-    const activeGraph = graphJson?.graphs?.find(g => g.year === selectedYear);
-    const chartData = activeGraph?.data?.map(d => {
-        // Intelligent label shortening: "January" → "Jan", "Dec 2022" → "D22"
-        const rawMonth = d.month || d.name || 'N/A';
-        let label = rawMonth;
-        const quarterMatch = rawMonth.match(/^(\w{3})\s+(\d{4})$/);
-        if (quarterMatch) {
-            label = quarterMatch[1][0] + quarterMatch[2].slice(2);
-        } else if (rawMonth.length > 3) {
-            label = rawMonth.substring(0, 3);
-        }
-        return {
-            label,
-            fullMonth: rawMonth,
-            npPct: d.npPct ?? 0,
-            gpPct: d.gpPct ?? 0,
-            grossSales: d.grossSales ?? 0,
-            netProfit: d.netProfit ?? 0,
-            grossProfit: d.grossProfit ?? 0,
-            purchase: d.purchase ?? 0,
-        };
-    }) || [];
 
-    const currentMetricInfo = METRICS.find(m => m.key === activeMetric)!;
-    const currentValue = chartData.length > 0 ? chartData[chartData.length - 1][activeMetric] : 0;
+    // Get data for selected year
+    const activeGraph = graphJson?.graphs?.find(g => g.year === selectedYear);
+    const chartData = activeGraph?.data?.map(d => ({
+        name: d.month ? d.month.substring(0, 3) : 'N/A',
+        margin: d.npPct,
+        fullName: d.name,
+        industry: d.industry || 'Unknown Sector',
+        fullMonth: d.month || 'Unknown'
+    })) || [];
+
+    const visibleData = chartData.slice(Math.max(chartData.length - durationLimit, 0));
+    const currentMargin = visibleData.length > 0 ? visibleData[visibleData.length - 1].margin : 0;
     const availableYears = graphJson?.availableYears || [];
 
+    // Handle click outside to close popover
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -116,75 +96,123 @@ export const MarginChart: React.FC<MarginChartProps> = ({ activeFileId }) => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    return (
-        <div className="bg-zinc-900 text-white p-6 md:p-8 rounded-[40px] shadow-xl w-full flex flex-col col-span-1 lg:col-span-2 relative min-h-[360px]">
+    // Build chart data combining selected years
+    const activeGraphs = graphJson?.graphs?.filter(g => selectedYears.includes(g.year)) || [];
+    const maxLength = Math.max(...activeGraphs.map(g => g.data?.length || 0), 0);
 
-            <div className="flex items-start justify-between mb-4">
+    let chartData: any[] = [];
+    for (let i = 0; i < maxLength; i++) {
+        const row: any = { index: i };
+        let defaultName = `Pt ${i + 1}`;
+        activeGraphs.forEach(g => {
+            const d = g.data[i];
+            if (d) {
+                const label = d.month ? d.month.substring(0, 3) : (d.name ? d.name.substring(0, 5) : '');
+                if (label && defaultName.startsWith('Pt ')) {
+                    defaultName = label;
+                }
+                row[`margin_${g.year}`] = d.npPct;
+                row[`fullName_${g.year}`] = d.name || 'Unknown';
+                row[`industry_${g.year}`] = d.industry || 'Unknown Sector';
+                row[`fullMonth_${g.year}`] = d.month || 'Unknown';
+            }
+        });
+        row['name'] = defaultName;
+        chartData.push(row);
+    }
+
+    const availableYears = graphJson?.availableYears || [];
+    const visibleData = chartData.slice(Math.max(chartData.length - durationLimit, 0));
+
+    // Get latest margin for the header
+    const sortedYears = [...selectedYears].sort();
+    const latestYear = sortedYears[sortedYears.length - 1];
+    let currentMargin = 0;
+    if (visibleData.length > 0 && latestYear && visibleData[visibleData.length - 1][`margin_${latestYear}`] !== undefined) {
+        currentMargin = visibleData[visibleData.length - 1][`margin_${latestYear}`];
+    } else if (visibleData.length > 0) {
+        const lastPt = visibleData[visibleData.length - 1];
+        const anyKey = Object.keys(lastPt).find(k => k.startsWith('margin_'));
+        if (anyKey) currentMargin = lastPt[anyKey];
+    }
+
+    return (
+        <div className="bg-zinc-900 border border-zinc-800 text-white p-6 md:p-8 rounded-[40px] shadow-2xl w-full flex flex-col col-span-1 lg:col-span-2 relative min-h-[360px] overflow-visible">
+
+            <div className="flex items-start justify-between mb-2">
                 <div>
                     <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 rounded-full mb-4">
                         <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                        <span className="text-[10px] font-bold tracking-wider uppercase text-zinc-300">{currentMetricInfo.label}</span>
+                        <span className="text-[10px] font-bold tracking-wider uppercase text-zinc-300">Net Profit Margin</span>
                     </div>
-                    <p className="text-3xl font-bold tracking-tight">{currentValue}{currentMetricInfo.suffix}</p>
+                    <p className="text-3xl font-bold tracking-tight">{currentMargin}%</p>
                 </div>
 
+                {/* Settings Gear Popover */}
                 <div className="relative" ref={menuRef}>
                     <button
                         onClick={() => setShowSettings(!showSettings)}
-                        className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors shadow-sm ${showSettings ? 'bg-zinc-800 text-white' : 'bg-white/10 text-zinc-300 hover:bg-white/20'}`}
+                        className={`w-11 h-11 rounded-[1.25rem] flex items-center justify-center transition-all shadow-sm ${showSettings ? 'bg-primary text-white rotate-90' : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700 hover:text-white'}`}
                     >
-                        <Settings size={18} strokeWidth={2.5} />
+                        <Settings size={20} strokeWidth={2.5} />
                     </button>
 
                     {showSettings && (
-                        <div className="absolute right-0 top-12 mt-1 w-64 bg-zinc-800 text-white rounded-[24px] p-5 shadow-2xl border border-zinc-700 z-50 animate-in fade-in zoom-in-95 duration-200">
+                        <div className="absolute right-0 top-14 w-72 bg-zinc-800 text-white rounded-[24px] p-6 shadow-2xl border border-zinc-700 animate-in fade-in zoom-in-95 duration-200">
 
                             <div className="mb-6">
-                                <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2 overflow-hidden">
-                                    Fiscal Year
+                                <label className="flex items-center justify-between text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-3">
+                                    <span>Compare Years</span>
+                                    <span className="bg-zinc-900 text-primary px-2 py-0.5 rounded-full text-[9px] font-black">{selectedYears.length} Selected</span>
                                 </label>
-                                <div className="relative">
-                                    <button
-                                        onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                                        className="w-full flex items-center justify-between bg-zinc-900 border border-zinc-700 outline-none rounded-xl px-4 py-2.5 text-sm font-bold cursor-pointer hover:bg-zinc-950 transition-colors"
-                                    >
-                                        <span>FY {selectedYear}</span>
-                                        <ChevronDown size={16} className={`text-zinc-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
-                                    </button>
-
-                                    {isDropdownOpen && (
-                                        <div className="absolute top-full left-0 right-0 mt-2 bg-zinc-900 border border-zinc-700 rounded-xl overflow-hidden shadow-xl z-50 animate-in fade-in zoom-in-95 duration-100">
-                                            {availableYears.map((yr) => (
-                                                <div
-                                                    key={yr}
-                                                    onClick={() => {
-                                                        setSelectedYear(yr);
-                                                        setIsDropdownOpen(false);
-                                                    }}
-                                                    className={`px-4 py-2.5 text-sm font-bold cursor-pointer transition-colors ${selectedYear === yr ? 'bg-primary/20 text-primary' : 'text-zinc-300 hover:bg-zinc-800'}`}
-                                                >
-                                                    FY {yr}
+                                <div className="space-y-2 max-h-48 overflow-y-auto pr-1 stylish-scrollbar">
+                                    {availableYears.map((yr, idx) => {
+                                        const isSelected = selectedYears.includes(yr);
+                                        const color = colors[idx % colors.length];
+                                        return (
+                                            <div
+                                                key={yr}
+                                                onClick={() => {
+                                                    if (isSelected && selectedYears.length === 1) return; // Prevent deselecting last item
+                                                    setSelectedYears(prev =>
+                                                        isSelected ? prev.filter(y => y !== yr) : [...prev, yr]
+                                                    );
+                                                }}
+                                                className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all border ${isSelected ? 'bg-zinc-900/80 border-zinc-700' : 'bg-zinc-900/30 border-transparent hover:bg-zinc-700/50'}`}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors ${isSelected ? 'border-transparent' : 'border-zinc-500'}`} style={{ backgroundColor: isSelected ? color : 'transparent' }}>
+                                                        {isSelected && <svg viewBox="0 0 14 14" fill="none" className="w-3 h-3 text-white"><path d="M3 7.5L5.5 10L11 4.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>}
+                                                    </div>
+                                                    <span className={`text-sm font-bold ${isSelected ? 'text-white' : 'text-zinc-400'}`}>FY {yr}</span>
                                                 </div>
-                                            ))}
-                                        </div>
-                                    )}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
 
                             <div>
-                                <label className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">
-                                    Metric
-                                </label>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {METRICS.map(m => (
-                                        <button
-                                            key={m.key}
-                                            onClick={() => setActiveMetric(m.key)}
-                                            className={`px-3 py-2 rounded-xl text-xs font-bold transition-all ${activeMetric === m.key ? 'bg-primary text-zinc-900' : 'bg-zinc-900 text-zinc-400 hover:bg-zinc-700 hover:text-white'}`}
-                                        >
-                                            {m.label}
-                                        </button>
-                                    ))}
+                                <div className="flex items-center justify-between mb-2">
+                                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
+                                        Companies Shown
+                                    </label>
+                                    <span className="text-xs font-black text-primary">{durationLimit}</span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min="3"
+                                    max={Math.max(chartData.length, 12)}
+                                    step="1"
+                                    value={durationLimit}
+                                    onChange={(e) => setDurationLimit(Number(e.target.value))}
+                                    className="w-full h-1.5 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-primary"
+                                />
+                                <div className="flex justify-between text-[9px] font-bold text-zinc-500 mt-2 tracking-widest">
+                                    <span>3</span>
+                                    <span>6</span>
+                                    <span>9</span>
+                                    <span>All</span>
                                 </div>
                             </div>
 
@@ -193,63 +221,58 @@ export const MarginChart: React.FC<MarginChartProps> = ({ activeFileId }) => {
                 </div>
             </div>
 
-            <div className="w-full h-[260px] min-h-[260px] -ml-4 mt-auto">
-                <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
-                        <XAxis
-                            dataKey="label"
-                            axisLine={false}
-                            tickLine={false}
-                            tick={{ fill: '#71717a', fontSize: 11, fontWeight: 500 }}
-                            dy={10}
-                            interval={0}
-                            padding={{ left: 20, right: 20 }}
-                        />
-                        <YAxis
-                            hide={true}
-                            domain={['dataMin - 1', 'dataMax + 1']}
-                        />
-                        <Tooltip
-                            cursor={{ stroke: '#3f3f46', strokeWidth: 1, strokeDasharray: '4 4' }}
-                            itemStyle={{ color: '#09090b' }}
-                            contentStyle={{
-                                backgroundColor: '#ffffff',
-                                borderRadius: '20px',
-                                border: 'none',
-                                color: '#09090b',
-                                fontWeight: 700,
-                                boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)',
-                            }}
-                            formatter={(_value: number, _name: string, props: any) => {
-                                const d = props.payload;
-                                const val = d[activeMetric];
-                                // Auto-detect unit: corporate values are in Crores (typically > 1000)
-                                const isCr = d.grossSales > 1000;
-                                const unit = isCr ? 'Cr' : 'K';
-                                const fmtVal = currentMetricInfo.suffix === '%' ? `${val}%` : `₹${val.toLocaleString('en-IN')} ${unit}`;
-                                const rev = `₹${d.grossSales.toLocaleString('en-IN')} ${unit}`;
-                                const np = `₹${d.netProfit.toLocaleString('en-IN')} ${unit}`;
-                                return [
-                                    fmtVal,
-                                    `${d.fullMonth} · Rev: ${rev} · NP: ${np}`
-                                ];
-                            }}
-                            labelStyle={{ display: 'none' }}
-                        />
+            <div className="w-full h-[260px] min-h-[260px] -ml-4 mt-8 z-10 flex-1">
+                {visibleData.length > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 5 }}>
+                            <XAxis
+                                dataKey="label"
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fill: '#71717a', fontSize: 11, fontWeight: 600 }}
+                                dy={10}
+                                interval="preserveStartEnd"
+                                padding={{ left: 20, right: 20 }}
+                            />
+                            <YAxis
+                                hide={true}
+                                domain={['dataMin - 2', 'dataMax + 2']}
+                            />
+                            <Tooltip
+                                cursor={{ stroke: '#3f3f46', strokeWidth: 1, strokeDasharray: '4 4' }}
+                                itemStyle={{ color: '#09090b' }}
+                                contentStyle={{
+                                    backgroundColor: '#ffffff',
+                                    borderRadius: '20px',
+                                    border: 'none',
+                                    color: '#09090b',
+                                    fontWeight: 700,
+                                    boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)',
+                                }}
+                                formatter={(value: number, _name: string, props: any) => [`${value}%`, `${props.payload.fullMonth} | ${props.payload.industry} | ${props.payload.fullName}`]}
+                                labelStyle={{ display: 'none' }}
+                            />
 
-                        <Line
-                            type="monotone"
-                            dataKey={activeMetric}
-                            stroke={currentMetricInfo.color}
-                            strokeWidth={4}
-                            dot={{ stroke: '#18181b', strokeWidth: 3, r: 6, fill: '#fff', cursor: 'pointer' }}
-                            activeDot={{ r: 8, fill: '#f97316', stroke: '#18181b', strokeWidth: 4, cursor: 'pointer' }}
-                            animationDuration={600}
-                        />
-                    </LineChart>
-                </ResponsiveContainer>
+                            <Line
+                                type="monotone"
+                                dataKey="margin"
+                                stroke="#ffffff"
+                                strokeWidth={4}
+                                dot={{ stroke: '#18181b', strokeWidth: 3, r: 6, fill: '#fff', cursor: 'pointer', onClick: () => { } }}
+                                activeDot={{ r: 8, fill: '#f97316', stroke: '#18181b', strokeWidth: 4, cursor: 'pointer' }}
+                                animationDuration={600}
+                            />
+                        </LineChart>
+                    </ResponsiveContainer>
+                ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center text-zinc-500 gap-4 mt-[-40px]">
+                        <BarChart2 size={36} className="opacity-20" />
+                        <span className="text-xs font-bold uppercase tracking-widest opacity-50">No Data Available</span>
+                    </div>
+                )}
             </div>
 
         </div>
     );
 };
+
