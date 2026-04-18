@@ -1,7 +1,7 @@
 const path = require('path');
 const fs = require('fs');
 const { parseTextFile } = require('./graphController');
-const { callLLM } = require('../utils/llmHelper');
+const { callLLM, callLLMStream } = require('../utils/llmHelper');
 
 const getPredictions = async (req, res) => {
     try {
@@ -44,33 +44,64 @@ const getPredictions = async (req, res) => {
 
         const systemPrompt = `You are a Chief Financial Officer AI. Review the provided SME financial health dataset and generate an overarching executive summary strategy document, identifying top-level insights, key recommendations, and next steps for the portfolio of companies.
 
-You MUST return a JSON object exactly matching this schema:
-{
-  "executiveSummary": "String (An in-depth, structured Markdown insight of the financial situation based on all provided data. You MUST include headings, subheadings, and bullet points.)",
-  "keyRecommendations": [
-    {
-      "title": "String (e.g., Marketing Re-investment)",
-      "description": "String (Detailed strategic advice)"
-    }
-  ],
-  "nextSteps": "String (Actionable immediate next step paragraph)",
-  "riskAnalysis": "String (Overview of companies at risk and why)"
-}`;
+You MUST return the output EXACTLY matching these XML-like tags:
+<executiveSummary>
+An in-depth, structured Markdown insight of the financial situation based on all provided data. You MUST include headings, subheadings, and bullet points.
+</executiveSummary>
+<keyRecommendations>
+A valid JSON array of objects with "title" and "description" keys. Do NOT use markdown code blocks inside this tag. e.g. [{"title": "Marketing Re-investment", "description": "Detailed strategic advice"}]
+</keyRecommendations>
+<nextSteps>
+Actionable immediate next step paragraph
+</nextSteps>
+<riskAnalysis>
+Overview of companies at risk and why
+</riskAnalysis>`;
 
         const userPrompt = `Generate a strategic financial insight report based on the following SME dataset:\n\n${JSON.stringify(parsedData)}`;
 
-        const strategyDataOutput = await callLLM(systemPrompt, userPrompt, true);
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+        res.flushHeaders();
 
-        fs.writeFileSync(strategyCachePath, JSON.stringify(strategyDataOutput, null, 2), 'utf8');
-
-        return res.status(200).json({
-            success: true,
-            fileId,
-            data: strategyDataOutput
+        const strategyDataOutputText = await callLLMStream(systemPrompt, userPrompt, (chunk) => {
+            res.write(`data: ${JSON.stringify({ chunk })}\n\n`);
         });
 
+        const extractTag = (text, tag) => {
+            const regex = new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`, 'i');
+            const match = text.match(regex);
+            return match ? match[1].trim() : "";
+        };
+
+        const execSummary = extractTag(strategyDataOutputText, "executiveSummary");
+        let keyRecsText = extractTag(strategyDataOutputText, "keyRecommendations");
+        let keyRecs = [];
+        try {
+            keyRecsText = keyRecsText.replace(/```json/gi, '').replace(/```/gi, '').trim();
+            if (keyRecsText) keyRecs = JSON.parse(keyRecsText);
+        } catch (e) {
+            console.error("Could not parse keyRecommendations:", keyRecsText);
+        }
+
+        const strategyDataOutput = {
+            executiveSummary: execSummary,
+            keyRecommendations: keyRecs,
+            nextSteps: extractTag(strategyDataOutputText, "nextSteps"),
+            riskAnalysis: extractTag(strategyDataOutputText, "riskAnalysis")
+        };
+
+        fs.writeFileSync(strategyCachePath, JSON.stringify(strategyDataOutput, null, 2), 'utf8');
+        res.write(`data: ${JSON.stringify({ chunk: "[DONE]" })}\n\n`);
+        res.end();
+
     } catch (error) {
-        return res.status(500).json({ success: false, message: error.message });
+        if (!res.headersSent) {
+            return res.status(500).json({ success: false, message: error.message });
+        } else {
+            res.end();
+        }
     }
 };
 
@@ -101,32 +132,63 @@ const getPortfolioPredictions = async (req, res) => {
 
         const systemPrompt = `You are a Chief Financial Officer AI. Review the provided SME financial health dataset and generate an overarching executive summary strategy document, identifying top-level insights, key recommendations, and next steps for the portfolio of companies.
 
-You MUST return a JSON object exactly matching this schema:
-{
-  "executiveSummary": "String (An in-depth, structured Markdown insight of the financial situation based on all provided data. You MUST include headings, subheadings, and bullet points.)",
-  "keyRecommendations": [
-    {
-      "title": "String (e.g., Marketing Re-investment)",
-      "description": "String (Detailed strategic advice)"
-    }
-  ],
-  "nextSteps": "String (Actionable immediate next step paragraph)",
-  "riskAnalysis": "String (Overview of companies at risk and why)"
-}`;
+You MUST return the output EXACTLY matching these XML-like tags:
+<executiveSummary>
+An in-depth, structured Markdown insight of the financial situation based on all provided data. You MUST include headings, subheadings, and bullet points.
+</executiveSummary>
+<keyRecommendations>
+A valid JSON array of objects with "title" and "description" keys. Do NOT use markdown code blocks inside this tag. e.g. [{"title": "Marketing Re-investment", "description": "Detailed strategic advice"}]
+</keyRecommendations>
+<nextSteps>
+Actionable immediate next step paragraph
+</nextSteps>
+<riskAnalysis>
+Overview of companies at risk and why
+</riskAnalysis>`;
 
         const userPrompt = `Generate a strategic financial insight report based on the following overall portfolio SME dataset:\n\n${JSON.stringify(allParsedData)}`;
 
-        const strategyDataOutput = await callLLM(systemPrompt, userPrompt, true);
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
 
-        fs.writeFileSync(strategyCachePath, JSON.stringify(strategyDataOutput, null, 2), 'utf8');
-
-        return res.status(200).json({
-            success: true,
-            data: strategyDataOutput
+        const strategyDataOutputText = await callLLMStream(systemPrompt, userPrompt, (chunk) => {
+            res.write(`data: ${JSON.stringify({ chunk })}\n\n`);
         });
 
+        const extractTag = (text, tag) => {
+            const regex = new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`, 'i');
+            const match = text.match(regex);
+            return match ? match[1].trim() : "";
+        };
+
+        const execSummary = extractTag(strategyDataOutputText, "executiveSummary");
+        let keyRecsText = extractTag(strategyDataOutputText, "keyRecommendations");
+        let keyRecs = [];
+        try {
+            keyRecsText = keyRecsText.replace(/```json/gi, '').replace(/```/gi, '').trim();
+            if (keyRecsText) keyRecs = JSON.parse(keyRecsText);
+        } catch (e) {
+            console.error("Could not parse keyRecommendations:", keyRecsText);
+        }
+
+        const strategyDataOutput = {
+            executiveSummary: execSummary,
+            keyRecommendations: keyRecs,
+            nextSteps: extractTag(strategyDataOutputText, "nextSteps"),
+            riskAnalysis: extractTag(strategyDataOutputText, "riskAnalysis")
+        };
+
+        fs.writeFileSync(strategyCachePath, JSON.stringify(strategyDataOutput, null, 2), 'utf8');
+        res.write(`data: ${JSON.stringify({ chunk: "[DONE]" })}\n\n`);
+        res.end();
+
     } catch (error) {
-        return res.status(500).json({ success: false, message: error.message });
+        if (!res.headersSent) {
+            return res.status(500).json({ success: false, message: error.message });
+        } else {
+            res.end();
+        }
     }
 };
 

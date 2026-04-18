@@ -30,20 +30,107 @@ export const Analytics: React.FC<{ activeFileId: string | null }> = ({ activeFil
         }
 
         setIsGenerating(true);
+        setShowDoc(true);
         try {
             const endpoint = activeFileId
                 ? `http://localhost:5001/api/strategy/predict/${activeFileId}`
                 : `http://localhost:5001/api/strategy/portfolio`;
 
             const response = await fetch(endpoint);
-            const res = await response.json();
 
-            setStrategy(res.data);
-        } catch (error) {
-            console.error(error);
+            if (response.headers.get("Content-Type")?.includes("application/json")) {
+                const res = await response.json();
+                if (!res.success) {
+                    throw new Error(res.message || "Failed to generate AI data.");
+                }
+                setStrategy(res.data);
+                setIsGenerating(false);
+                return;
+            }
+
+            const reader = response.body?.getReader();
+            if (!reader) throw new Error("Stream unavailable");
+            const decoder = new TextDecoder("utf-8");
+
+            let fullText = "";
+            let buffer = "";
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) {
+                    if (buffer.trim()) {
+                        const lines = buffer.split("\n");
+                        for (const line of lines) {
+                            if (line.startsWith("data: ") && !line.includes("[DONE]")) {
+                                try {
+                                    const data = JSON.parse(line.slice(6));
+                                    if (data.chunk && data.chunk !== "[DONE]") fullText += data.chunk;
+                                } catch (e) { }
+                            }
+                        }
+                    }
+                    break;
+                }
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split("\n");
+                buffer = lines.pop() || "";
+
+                let shouldUpdate = false;
+                for (const line of lines) {
+                    if (line.startsWith("data: ") && !line.includes("[DONE]")) {
+                        try {
+                            const data = JSON.parse(line.slice(6));
+                            if (data.chunk && data.chunk !== "[DONE]") {
+                                fullText += data.chunk;
+                                shouldUpdate = true;
+                            }
+                        } catch (e) { }
+                    }
+                }
+
+                if (shouldUpdate) {
+                    const extractTag = (text: string, tag: string) => {
+                        const regex = new RegExp(`<${tag}>([\\s\\S]*?)(</${tag}>|$)`, 'i');
+                        const match = text.match(regex);
+                        return match ? match[1].trim() : "";
+                    };
+
+                    setStrategy({
+                        executiveSummary: extractTag(fullText, "executiveSummary"),
+                        keyRecommendations: strategy?.keyRecommendations || [],
+                        nextSteps: extractTag(fullText, "nextSteps")
+                    });
+                }
+            }
+
+            const extractTagExact = (text: string, tag: string) => {
+                const regex = new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`, 'i');
+                const match = text.match(regex);
+                return match ? match[1].trim() : "";
+            };
+
+            let keyRecsText = extractTagExact(fullText, "keyRecommendations").replace(/```json/gi, '').replace(/```/gi, '').trim();
+            let keyRecs = [];
+            try {
+                if (keyRecsText) keyRecs = JSON.parse(keyRecsText);
+            } catch (e) { }
+
+            setStrategy({
+                executiveSummary: extractTagExact(fullText, "executiveSummary"),
+                keyRecommendations: keyRecs,
+                nextSteps: extractTagExact(fullText, "nextSteps")
+            });
+
+        } catch (error: any) {
+            console.error("Fetch generation error:", error);
+            setStrategy({
+                executiveSummary: `## Error \n\nAn error occurred while generating the strategy document: ${error.message}\n\nPlease try again later.`,
+                keyRecommendations: [],
+                nextSteps: ""
+            });
         } finally {
             setIsGenerating(false);
-            setShowDoc(true);
         }
     };
 
@@ -208,7 +295,33 @@ export const Analytics: React.FC<{ activeFileId: string | null }> = ({ activeFil
                                     <Sparkles size={24} />
                                 </div>
                                 <div>
-                                    <h2 className="text-2xl font-bold text-zinc-900 tracking-tight">Q3 Strategic Action Plan</h2>
+                                    <div className="flex items-center gap-4">
+                                        <h2 className="text-2xl font-bold text-zinc-900 tracking-tight">Q3 Strategic Action Plan</h2>
+                                        <AnimatePresence>
+                                            {isGenerating && (
+                                                <motion.div
+                                                    initial={{ opacity: 0, scale: 0.95 }}
+                                                    animate={{ opacity: 1, scale: 1 }}
+                                                    exit={{ opacity: 0, scale: 0.95 }}
+                                                    className="flex items-center gap-3 px-4 py-1.5 rounded-full bg-zinc-900 border border-zinc-800 shadow-xl overflow-hidden relative"
+                                                >
+                                                    <motion.div
+                                                        className="absolute inset-0 bg-violet-500/20"
+                                                        animate={{ left: ["-100%", "100%"] }}
+                                                        transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+                                                    />
+                                                    <div className="flex gap-1 items-center relative z-10 pt-0.5">
+                                                        <motion.span animate={{ y: [0, -3, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0 }} className="w-1.5 h-1.5 rounded-full bg-violet-400" />
+                                                        <motion.span animate={{ y: [0, -3, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0.2 }} className="w-1.5 h-1.5 rounded-full bg-violet-400" />
+                                                        <motion.span animate={{ y: [0, -3, 0] }} transition={{ duration: 0.6, repeat: Infinity, delay: 0.4 }} className="w-1.5 h-1.5 rounded-full bg-violet-400" />
+                                                    </div>
+                                                    <span className="text-[11px] font-bold text-white uppercase tracking-widest relative z-10">
+                                                        Analyzing
+                                                    </span>
+                                                </motion.div>
+                                            )}
+                                        </AnimatePresence>
+                                    </div>
                                     <p className="text-sm font-semibold text-zinc-500">AI Generated based on current financial footprint</p>
                                 </div>
                             </div>
@@ -232,12 +345,22 @@ export const Analytics: React.FC<{ activeFileId: string | null }> = ({ activeFil
                                                 ul: ({ node, ...props }) => <ul className="list-disc pl-6 mb-6 space-y-3 marker:text-violet-500" {...props} />,
                                                 ol: ({ node, ...props }) => <ol className="list-decimal pl-6 mb-6 space-y-3 marker:text-violet-500 font-semibold text-zinc-900" {...props} />,
                                                 li: ({ node, ...props }) => <li className="text-[1.125rem] leading-relaxed text-zinc-600 font-medium" {...props} />,
-                                                p: ({ node, ...props }) => <p className="mb-6 text-[1.125rem] leading-relaxed text-zinc-600 font-medium" {...props} />,
+                                                p: ({ node, ...props }) => <p className="mb-6 text-[1.125rem] leading-relaxed text-zinc-600 font-medium inline-block w-full" {...props} />,
                                                 strong: ({ node, ...props }) => <strong className="font-extrabold text-zinc-900" {...props} />,
-                                                blockquote: ({ node, ...props }) => <blockquote className="border-l-4 border-violet-500 pl-4 italic text-zinc-500 my-6 bg-zinc-50 py-3 rounded-r-xl" {...props} />
+                                                blockquote: ({ node, ...props }) => <blockquote className="border-l-4 border-violet-500 pl-4 italic text-zinc-500 my-6 bg-zinc-50 py-3 rounded-r-xl" {...props} />,
+                                                code: ({ node, inline, className, children, ...props }: any) => {
+                                                    if (String(children).replace(/\n$/, '') === 'cursor') {
+                                                        return <motion.span animate={{ opacity: [1, 0, 1] }} transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }} className="inline-block w-3 h-[1.125rem] bg-violet-500 ml-1.5 align-middle rounded-[2px]" />;
+                                                    }
+                                                    return <code className={className} {...props}>{children}</code>;
+                                                }
                                             }}
                                         >
-                                            {strategy?.executiveSummary || "Generating comprehensive financial insight based on available data... Please wait."}
+                                            {strategy?.executiveSummary ? (
+                                                strategy.executiveSummary + (isGenerating ? " `cursor`" : "")
+                                            ) : (
+                                                isGenerating ? "Generating comprehensive financial insight based on available data... Please wait. `cursor`" : "No summary available."
+                                            )}
                                         </ReactMarkdown>
                                     </div>
                                 </section>
@@ -266,7 +389,11 @@ export const Analytics: React.FC<{ activeFileId: string | null }> = ({ activeFil
                                         </div>
                                         <h2 className="text-3xl font-bold tracking-tight mb-6">Immediate Next Steps</h2>
                                         <p className="text-xl leading-relaxed text-zinc-300 font-medium mb-8 lg:max-w-3xl relative z-10">
-                                            {strategy?.nextSteps || "Synthesizing immediate next steps..."}
+                                            {strategy?.nextSteps ? (
+                                                strategy.nextSteps + (isGenerating ? " `cursor`" : "")
+                                            ) : (
+                                                isGenerating ? "Synthesizing immediate next steps... `cursor`" : "No next steps generated."
+                                            )}
                                         </p>
                                         <div id="pdf-actions" className="flex flex-wrap gap-4 relative z-10">
                                             <button className="px-8 py-4 bg-white text-zinc-900 font-bold rounded-2xl hover:bg-zinc-200 transition-colors">
